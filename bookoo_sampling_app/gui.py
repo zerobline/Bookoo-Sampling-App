@@ -12,10 +12,16 @@ import queue
 import statistics
 import time
 import tkinter as tk
+import tkinter.font as tkfont
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
+
+try:
+    import sv_ttk
+except ImportError:  # pragma: no cover - degrades to stock ttk if not installed
+    sv_ttk = None
 
 from .async_bridge import AsyncLoopThread
 from .scale_source import BLEScaleSource, ScaleReading, SimulatedScaleSource
@@ -24,26 +30,50 @@ from .session import SamplingSession
 
 POLL_INTERVAL_MS = 50
 DEFAULT_DATA_DIR = Path.home() / "BookooSamplingApp" / "sessions"
+ASSETS_DIR = Path(__file__).parent / "assets"
 
 # Warn once the scale's own reported battery drops to/below this, and don't
 # warn again until it's recovered well past it (e.g. a battery swap).
 LOW_BATTERY_WARN_PCT = 15
 LOW_BATTERY_RESET_PCT = 25
 
-# Rough color per status, just to make the state visible at a glance.
+# -- visual style ------------------------------------------------------
+#
+# One place for the app's look: fonts, palette, and spacing. Values below
+# match sv-ttk's "light" theme palette (see its theme/light.tcl) so the
+# few things sv-ttk can't style itself -- the plain tk.Text log and the
+# tk.Toplevel dialogs -- blend in instead of showing stock-gray Tk chrome.
+
+FONT_FAMILY = "Segoe UI"
+MONO_FAMILY = "Consolas"
+FONT_BASE = (FONT_FAMILY, 10)
+FONT_BASE_BOLD = (FONT_FAMILY, 10, "bold")
+FONT_SECTION_HEADER = (FONT_FAMILY, 11, "bold")
+FONT_STATUS = (FONT_FAMILY, 15, "bold")
+FONT_PROGRESS = (FONT_FAMILY, 12)
+FONT_WEIGHT_DISPLAY = (MONO_FAMILY, 54, "bold")
+FONT_TELEMETRY = (FONT_FAMILY, 9)
+
+THEME_BG = "#fafafa"
+THEME_FG = "#1c1c1c"
+ACCENT = "#005fb8"  # sv-ttk's own accent color, so Accent.TButton matches
+
+# Semantic status colors: blue for idle/waiting, green while progressing
+# toward (or landing on) a good result, amber/orange while something is
+# actively happening, red once stopped -- scannable without reading text.
 STATUS_COLORS = {
-    State.IDLE: "#666666",
-    State.WAITING_FOR_CUP: "#1f6feb",
-    State.CUP_DETECTED: "#1f6feb",
-    State.TARING: "#8957e5",
-    State.READY: "#1a7f37",
-    State.DISPENSING: "#bf5000",
-    State.STABILIZING: "#9a6700",
-    State.RECORDED: "#1a7f37",
-    State.WAITING_FOR_REMOVAL: "#1f6feb",
-    State.PAUSED: "#666666",
-    State.COMPLETE: "#1a7f37",
-    State.STOPPED: "#cf222e",
+    State.IDLE: ACCENT,
+    State.WAITING_FOR_CUP: ACCENT,
+    State.CUP_DETECTED: ACCENT,
+    State.TARING: "#8764b8",
+    State.READY: "#107c10",
+    State.DISPENSING: "#ca5010",
+    State.STABILIZING: "#9d5d00",
+    State.RECORDED: "#107c10",
+    State.WAITING_FOR_REMOVAL: ACCENT,
+    State.PAUSED: "#797775",
+    State.COMPLETE: "#107c10",
+    State.STOPPED: "#c42b1c",
 }
 
 
@@ -62,8 +92,9 @@ class SamplingApp:
     def __init__(self, root: tk.Tk, data_dir: Path = DEFAULT_DATA_DIR):
         self.root = root
         self.root.title("BOOKOO Scale – Sample Measurement")
-        self.root.geometry("760x760")
-        self.root.minsize(680, 680)
+        self.root.configure(background=THEME_BG)
+        self._apply_theme()
+        self._set_window_icon()
 
         self.data_dir = data_dir
         self.async_loop = AsyncLoopThread()
@@ -80,72 +111,214 @@ class SamplingApp:
         self._session_start_wall: Optional[float] = None
 
         self._build_widgets()
+
+        # Size the window to fit its actual content rather than a guessed
+        # pixel size: real "Segoe UI" metrics (and DPI scaling) vary enough
+        # across Windows machines that a hardcoded geometry risks clipping
+        # sections off the bottom, as a fixed guess did during styling.
+        self.root.update_idletasks()
+        width = max(720, self.root.winfo_reqwidth())
+        height = max(760, self.root.winfo_reqheight())
+        self.root.geometry(f"{width}x{height}")
+        self.root.minsize(width, height)
+
         self._refresh_button_states()
         self.root.after(POLL_INTERVAL_MS, self._poll_events)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
+    # -- look and feel -----------------------------------------------------
+
+    def _apply_theme(self) -> None:
+        """Modern ttk styling: sv-ttk (Windows 11 look) where available,
+        with explicit "Segoe UI"/"Consolas" fonts regardless -- sv-ttk ships
+        its own "Segoe UI Variable" named fonts, which this overrides so
+        the app reads correctly even where that font isn't installed."""
+        style = ttk.Style(self.root)
+        sv_ttk_loaded = False
+        if sv_ttk is not None:
+            try:
+                sv_ttk.set_theme("light")
+                sv_ttk_loaded = True
+            except Exception:
+                pass
+
+        if not sv_ttk_loaded:
+            # No sv-ttk: fall back to "clam", the stock ttk theme that
+            # actually honors custom button colors (the Windows-native
+            # "vista" theme mostly ignores them), and hand-roll a matching
+            # Accent.TButton so style="Accent.TButton" below always
+            # resolves to something instead of raising TclError.
+            try:
+                style.theme_use("clam")
+            except tk.TclError:
+                pass
+            style.configure("Accent.TButton", background=ACCENT, foreground="white", padding=(8, 4))
+            style.map(
+                "Accent.TButton",
+                background=[("disabled", "#a0a0a0"), ("pressed", "#004c93"), ("active", "#0067c0")],
+                foreground=[("disabled", "#e6e6e6")],
+            )
+
+        style.configure(".", font=FONT_BASE)
+        style.configure("TLabelframe.Label", font=FONT_SECTION_HEADER)
+        style.configure("TButton", font=FONT_BASE)
+        style.configure("Accent.TButton", font=FONT_BASE)
+        style.configure("Treeview", font=FONT_BASE, rowheight=26)
+        style.configure("Treeview.Heading", font=FONT_BASE_BOLD)
+
+        # sv-ttk creates these named fonts when its theme loads (used by
+        # TLabelframe.Label, Treeview headings/rows, and entry-style
+        # widgets); remap them so those follow the same "Segoe UI" spec
+        # rather than sv-ttk's default "Segoe UI Variable" family.
+        sv_font_overrides = {
+            "SunValleyCaptionFont": (FONT_FAMILY, 11, "bold"),
+            "SunValleyBodyFont": (FONT_FAMILY, 10, "normal"),
+            "SunValleyBodyStrongFont": (FONT_FAMILY, 10, "bold"),
+        }
+        for name, (family, size, weight) in sv_font_overrides.items():
+            try:
+                tkfont.nametofont(name).configure(family=family, size=size, weight=weight)
+            except tk.TclError:
+                pass
+
+        # Widgets with no ttk equivalent (tk.Text, tk.Toplevel) don't pick
+        # up the ttk theme automatically -- also retarget Tk's own default
+        # fonts so anything falling back to them still matches.
+        for name in ("TkDefaultFont", "TkTextFont", "TkHeadingFont", "TkMenuFont"):
+            try:
+                tkfont.nametofont(name).configure(family=FONT_FAMILY, size=10)
+            except tk.TclError:
+                pass
+        try:
+            tkfont.nametofont("TkFixedFont").configure(family=MONO_FAMILY, size=10)
+        except tk.TclError:
+            pass
+
+    def _set_window_icon(self) -> None:
+        # .ico is the correct format on Windows; iconbitmap raises on other
+        # platforms (X11 expects .xbm), so fall back to iconphoto there --
+        # keeps this working under the Linux/Xvfb smoke tests used to
+        # verify the app in this repo, and degrades silently if the asset
+        # is ever missing.
+        try:
+            self.root.iconbitmap(str(ASSETS_DIR / "icon.ico"))
+            return
+        except Exception:
+            pass
+        try:
+            self._icon_image = tk.PhotoImage(file=str(ASSETS_DIR / "icon.png"))
+            self.root.iconphoto(True, self._icon_image)
+        except Exception:
+            pass
+
+    def _new_dialog(self, title: str) -> tk.Toplevel:
+        """A tk.Toplevel (no ttk equivalent) themed to match the rest of
+        the app instead of showing stock Tk chrome."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.transient(self.root)
+        dialog.configure(background=THEME_BG)
+        return dialog
+
     # -- widget construction ---------------------------------------------
 
     def _build_widgets(self) -> None:
-        pad = {"padx": 8, "pady": 6}
+        pad = {"padx": 14, "pady": (0, 14)}
+        row_pad = {"padx": 6, "pady": 5}
 
-        conn = ttk.LabelFrame(self.root, text="Scale connection")
+        # -- Scale connection ------------------------------------------
+        conn = ttk.LabelFrame(self.root, text="Scale connection", padding=14)
         conn.pack(fill="x", **pad)
+        conn.columnconfigure(1, weight=1)
+
+        ttk.Label(conn, text="Mode:").grid(row=0, column=0, sticky="w", **row_pad)
         self.simulate_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(conn, text="Simulate scale (no hardware)", variable=self.simulate_var).pack(
-            side="left", padx=8, pady=6
+        ttk.Checkbutton(conn, text="Simulate scale (no hardware)", variable=self.simulate_var).grid(
+            row=0, column=1, sticky="w", **row_pad
         )
-        self.connect_btn = ttk.Button(conn, text="Connect", command=self._on_connect)
-        self.connect_btn.pack(side="left", padx=4)
-        self.disconnect_btn = ttk.Button(conn, text="Disconnect", command=self._on_disconnect)
-        self.disconnect_btn.pack(side="left", padx=4)
+
+        ttk.Label(conn, text="Status:").grid(row=1, column=0, sticky="w", **row_pad)
         self.conn_status_var = tk.StringVar(value="Not connected")
-        ttk.Label(conn, textvariable=self.conn_status_var).pack(side="left", padx=10)
+        ttk.Label(conn, textvariable=self.conn_status_var).grid(row=1, column=1, sticky="w", **row_pad)
 
-        setup = ttk.LabelFrame(self.root, text="Session")
-        setup.pack(fill="x", **pad)
-        ttk.Label(setup, text="Planned samples (max 100):").pack(side="left", padx=8)
-        self.samples_var = tk.IntVar(value=100)
-        ttk.Spinbox(setup, from_=1, to=100, textvariable=self.samples_var, width=6).pack(side="left")
-        self.start_btn = ttk.Button(setup, text="Start Test", command=self._on_start)
-        self.start_btn.pack(side="left", padx=8)
-        ttk.Button(setup, text="Settings…", command=self._open_settings).pack(side="left", padx=4)
-
-        center = ttk.Frame(self.root)
-        center.pack(fill="x", pady=(10, 0))
-        self.weight_var = tk.StringVar(value="---.- g")
-        ttk.Label(center, textvariable=self.weight_var, font=("Segoe UI", 56, "bold"), anchor="center").pack(
-            fill="x"
+        conn_buttons = ttk.Frame(conn)
+        conn_buttons.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        self.connect_btn = ttk.Button(
+            conn_buttons, text="Connect", style="Accent.TButton", command=self._on_connect
         )
+        self.connect_btn.pack(side="left", padx=(0, 8))
+        self.disconnect_btn = ttk.Button(conn_buttons, text="Disconnect", command=self._on_disconnect)
+        self.disconnect_btn.pack(side="left")
+
+        # -- Session -----------------------------------------------------
+        setup = ttk.LabelFrame(self.root, text="Session", padding=14)
+        setup.pack(fill="x", **pad)
+        setup.columnconfigure(1, weight=1)
+
+        ttk.Label(setup, text="Planned samples (max 100):").grid(row=0, column=0, sticky="w", **row_pad)
+        self.samples_var = tk.IntVar(value=100)
+        ttk.Spinbox(setup, from_=1, to=100, textvariable=self.samples_var, width=6).grid(
+            row=0, column=1, sticky="w", **row_pad
+        )
+
+        setup_buttons = ttk.Frame(setup)
+        setup_buttons.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        self.start_btn = ttk.Button(setup_buttons, text="Start Test", style="Accent.TButton", command=self._on_start)
+        self.start_btn.pack(side="left", padx=(0, 8))
+        ttk.Button(setup_buttons, text="Settings…", command=self._open_settings).pack(side="left")
+
+        # -- Live readout --------------------------------------------------
+        center = ttk.Frame(self.root)
+        center.pack(fill="x", padx=14, pady=(0, 14))
+        self.weight_var = tk.StringVar(value="---.- g")
+        ttk.Label(center, textvariable=self.weight_var, font=FONT_WEIGHT_DISPLAY, anchor="center").pack(fill="x")
+
         telemetry = ttk.Frame(center)
         telemetry.pack()
         self.battery_var = tk.StringVar(value="Battery: --")
-        self.battery_label = ttk.Label(telemetry, textvariable=self.battery_var, font=("Segoe UI", 10))
+        self.battery_label = ttk.Label(telemetry, textvariable=self.battery_var, font=FONT_TELEMETRY)
         self.battery_label.pack(side="left", padx=10)
         self.flow_var = tk.StringVar(value="Flow: -- g/s")
-        ttk.Label(telemetry, textvariable=self.flow_var, font=("Segoe UI", 10)).pack(side="left", padx=10)
-        self.status_var = tk.StringVar(value=STATUS_LABELS[State.IDLE])
-        self.status_label = ttk.Label(center, textvariable=self.status_var, font=("Segoe UI", 18), anchor="center")
-        self.status_label.pack(fill="x")
-        self.progress_var = tk.StringVar(value="Sample 0 / 100")
-        ttk.Label(center, textvariable=self.progress_var, font=("Segoe UI", 13), anchor="center").pack(fill="x")
-        self.last_result_var = tk.StringVar(value="Last result: –")
-        ttk.Label(center, textvariable=self.last_result_var, font=("Segoe UI", 11), anchor="center").pack(fill="x")
+        ttk.Label(telemetry, textvariable=self.flow_var, font=FONT_TELEMETRY).pack(side="left", padx=10)
 
+        self.status_var = tk.StringVar(value=STATUS_LABELS[State.IDLE])
+        self.status_label = ttk.Label(
+            center,
+            textvariable=self.status_var,
+            font=FONT_STATUS,
+            foreground=STATUS_COLORS[State.IDLE],
+            anchor="center",
+        )
+        self.status_label.pack(fill="x", pady=(4, 0))
+        self.progress_var = tk.StringVar(value="Sample 0 / 100")
+        ttk.Label(center, textvariable=self.progress_var, font=FONT_PROGRESS, anchor="center").pack(fill="x")
+        self.last_result_var = tk.StringVar(value="Last result: –")
+        ttk.Label(center, textvariable=self.last_result_var, anchor="center").pack(fill="x")
+
+        # -- Controls, grouped by purpose ---------------------------------
         controls = ttk.Frame(self.root)
         controls.pack(fill="x", **pad)
-        self.pause_btn = ttk.Button(controls, text="Pause", command=self._on_pause_resume)
+
+        session_controls = ttk.Frame(controls)
+        session_controls.pack(side="left")
+        self.pause_btn = ttk.Button(session_controls, text="Pause", command=self._on_pause_resume)
         self.pause_btn.pack(side="left", padx=4)
-        self.stop_btn = ttk.Button(controls, text="Stop", command=self._on_stop)
+        self.stop_btn = ttk.Button(session_controls, text="Stop", command=self._on_stop)
         self.stop_btn.pack(side="left", padx=4)
-        self.tare_btn = ttk.Button(controls, text="Manual Tare", command=self._on_manual_tare)
+        self.tare_btn = ttk.Button(session_controls, text="Manual Tare", command=self._on_manual_tare)
         self.tare_btn.pack(side="left", padx=4)
-        self.accept_btn = ttk.Button(controls, text="Accept Measurement", command=self._on_accept)
+
+        ttk.Separator(controls, orient="vertical").pack(side="left", fill="y", padx=16, pady=2)
+
+        judgment_controls = ttk.Frame(controls)
+        judgment_controls.pack(side="left")
+        self.accept_btn = ttk.Button(judgment_controls, text="Accept Measurement", command=self._on_accept)
         self.accept_btn.pack(side="left", padx=4)
-        self.redo_btn = ttk.Button(controls, text="Redo Sample", command=self._on_redo)
+        self.redo_btn = ttk.Button(judgment_controls, text="Redo Sample", command=self._on_redo)
         self.redo_btn.pack(side="left", padx=4)
 
-        table_frame = ttk.LabelFrame(self.root, text="Results")
+        # -- Results -------------------------------------------------------
+        table_frame = ttk.LabelFrame(self.root, text="Results", padding=12)
         table_frame.pack(fill="both", expand=True, **pad)
         columns = ("sample", "weight", "time")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
@@ -165,9 +338,27 @@ class SamplingApp:
         ttk.Button(export, text="Export CSV…", command=self._export_csv).pack(side="left", padx=4)
         ttk.Button(export, text="Export JSON…", command=self._export_json).pack(side="left", padx=4)
 
-        log_frame = ttk.LabelFrame(self.root, text="Messages")
-        log_frame.pack(fill="both", **pad)
-        self.log = tk.Text(log_frame, height=5, state="disabled", wrap="word")
+        log_frame = ttk.LabelFrame(self.root, text="Messages", padding=10)
+        log_frame.pack(fill="both", padx=14, pady=(0, 14))
+        # tk.Text has no ttk equivalent -- styled by hand to match the
+        # theme instead of showing stock Tk gray-on-white.
+        self.log = tk.Text(
+            log_frame,
+            height=5,
+            state="disabled",
+            wrap="word",
+            font=FONT_BASE,
+            background=THEME_BG,
+            foreground=THEME_FG,
+            insertbackground=THEME_FG,
+            relief="flat",
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground="#d6d6d6",
+            highlightcolor=ACCENT,
+            padx=8,
+            pady=6,
+        )
         self.log.pack(fill="both", expand=True)
 
     # -- connection --------------------------------------------------------
@@ -261,9 +452,7 @@ class SamplingApp:
     # -- settings ------------------------------------------------------
 
     def _open_settings(self) -> None:
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Detection thresholds")
-        dialog.transient(self.root)
+        dialog = self._new_dialog("Detection thresholds")
         fields = [
             ("min_object_weight_g", "Min. weight to detect a cup (g)"),
             ("cup_stable_tolerance_g", "Cup stability tolerance (±g)"),
@@ -274,9 +463,9 @@ class SamplingApp:
         ]
         vars_by_field = {}
         for row, (attr, label) in enumerate(fields):
-            ttk.Label(dialog, text=label).grid(row=row, column=0, sticky="w", padx=8, pady=4)
+            ttk.Label(dialog, text=label).grid(row=row, column=0, sticky="w", padx=14, pady=6)
             var = tk.DoubleVar(value=getattr(self.config, attr))
-            ttk.Entry(dialog, textvariable=var, width=10).grid(row=row, column=1, padx=8, pady=4)
+            ttk.Entry(dialog, textvariable=var, width=10).grid(row=row, column=1, padx=14, pady=6)
             vars_by_field[attr] = var
 
         def apply_and_close() -> None:
@@ -287,8 +476,8 @@ class SamplingApp:
                     pass
             dialog.destroy()
 
-        ttk.Button(dialog, text="Apply", command=apply_and_close).grid(
-            row=len(fields), column=0, columnspan=2, pady=8
+        ttk.Button(dialog, text="Apply", style="Accent.TButton", command=apply_and_close).grid(
+            row=len(fields), column=0, columnspan=2, pady=(6, 14)
         )
 
     # -- event pump ------------------------------------------------------
@@ -313,7 +502,7 @@ class SamplingApp:
     def _handle_event(self, event: Event) -> None:
         if event.kind == "status_changed":
             self.status_var.set(STATUS_LABELS.get(event.state, event.state.value))
-            self.status_label.configure(foreground=STATUS_COLORS.get(event.state, "#000000"))
+            self.status_label.configure(foreground=STATUS_COLORS.get(event.state, THEME_FG))
             planned = self.session.planned_samples
             self.progress_var.set(f"Sample {self.session.machine.sample_count} / {planned}")
             if event.state == State.COMPLETE:
@@ -353,9 +542,9 @@ class SamplingApp:
                 if not self._low_battery_warned:
                     self._low_battery_warned = True
                     self._log(f"WARNING: scale battery low ({battery:.0f}%)")
-                self.battery_label.configure(foreground="#cf222e")
+                self.battery_label.configure(foreground=STATUS_COLORS[State.STOPPED])
             else:
-                self.battery_label.configure(foreground="")
+                self.battery_label.configure(foreground=THEME_FG)
                 if battery >= LOW_BATTERY_RESET_PCT:
                     self._low_battery_warned = False
 
@@ -373,12 +562,10 @@ class SamplingApp:
         elapsed_s = time.time() - self._session_start_wall if self._session_start_wall else 0.0
         minutes, seconds = divmod(int(elapsed_s), 60)
 
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Session summary")
-        dialog.transient(self.root)
+        dialog = self._new_dialog("Session summary")
 
-        ttk.Label(dialog, text=reason, font=("Segoe UI", 11, "bold")).grid(
-            row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 6)
+        ttk.Label(dialog, text=reason, font=FONT_SECTION_HEADER).grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=16, pady=(16, 8)
         )
         stats = [
             ("Samples recorded", str(len(weights))),
@@ -388,14 +575,17 @@ class SamplingApp:
             ("Duration", f"{minutes}m {seconds:02d}s"),
         ]
         for row, (label, value) in enumerate(stats, start=1):
-            ttk.Label(dialog, text=f"{label}:").grid(row=row, column=0, sticky="w", padx=12, pady=2)
-            ttk.Label(dialog, text=value).grid(row=row, column=1, sticky="w", padx=12, pady=2)
+            ttk.Label(dialog, text=f"{label}:").grid(row=row, column=0, sticky="w", padx=16, pady=3)
+            ttk.Label(dialog, text=value, font=FONT_BASE_BOLD).grid(row=row, column=1, sticky="w", padx=16, pady=3)
 
         buttons = ttk.Frame(dialog)
-        buttons.grid(row=len(stats) + 1, column=0, columnspan=2, pady=10)
-        ttk.Button(buttons, text="Export CSV…", command=lambda: (self._export_csv(), dialog.destroy())).pack(
-            side="left", padx=6
-        )
+        buttons.grid(row=len(stats) + 1, column=0, columnspan=2, pady=(10, 16))
+        ttk.Button(
+            buttons,
+            text="Export CSV…",
+            style="Accent.TButton",
+            command=lambda: (self._export_csv(), dialog.destroy()),
+        ).pack(side="left", padx=6)
         ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side="left", padx=6)
 
     # -- export ----------------------------------------------------------
