@@ -10,6 +10,35 @@ beverage, remove the filled cup — and the app handles taring, detecting
 pour start/stop, waiting for a stable final weight, recording the result,
 and moving on to the next sample automatically.
 
+## Supported hardware
+
+This app talks BOOKOO's own BLE packet protocol directly (see below), so it
+only works with BOOKOO scales, specifically:
+
+* **BOOKOO Mini Scale** — advertises as `BOOKOO_SC...`
+* **BOOKOO Scale Ultra** — advertises as `BOOKOO_SC_U...`
+
+Both use the same service/characteristic UUIDs, checksum, and live-weight
+packet layout, so one implementation (`protocol.py`) covers either; the app
+scans for any device whose advertised name starts with `BOOKOO`. It does
+**not** work with other brands of BLE scale (different protocol) or with
+BOOKOO's separate Espresso Monitor product (also BLE, but a different,
+unimplemented protocol).
+
+A scale only accepts one BLE connection at a time, so make sure it isn't
+already connected to the official BOOKOO app, Beanconqueror, or another
+tool before connecting here — otherwise the connection (or scan) will
+fail or time out. No real scale on hand? Tick **Simulate scale (no
+hardware)** in the app to run the full flow against a built-in simulator
+instead.
+
+The protocol itself comes from BOOKOO's officially published documentation
+(`bookoo_mini_scale/protocols.md` and `bookoo_ultra_scale/protocols.md`,
+bundled here in `OpenSource-main.zip`), cross-checked against
+`BOOKOO_PROTOCOL_AUDIT.md` (bundled in `BOOKOO_Protocol_Lab.zip`), which
+also documents a bug this app's `protocol.py` fixes (see "BLE protocol"
+below).
+
 ## Quick start
 
 ```bash
@@ -23,10 +52,8 @@ you may need your distro's `python3-tk` package.
 
 In the app, tick **Simulate scale (no hardware)** and click **Connect** to
 try the whole flow (cup placed → pour → stable weight → next sample)
-without a real scale — useful for a first look or for demoing on a machine
-that doesn't have one nearby. Uncheck it to connect to a real BOOKOO scale
-over BLE (it is discovered by name; make sure it's powered on, in range,
-and not already connected to another app, e.g. the phone app).
+without a real scale. Uncheck it to connect to a real scale over BLE (see
+"Supported hardware" above for which ones, and what to check first).
 
 ## Running the tests
 
@@ -37,8 +64,8 @@ pytest
 
 The suite covers the protocol codec, every state-machine transition
 (including the "don't record a bogus result" scenarios below), storage,
-and an end-to-end run against the built-in simulator — no BLE hardware
-needed to run it.
+the simulator's scripted readings, and an end-to-end run against it — no
+BLE hardware needed to run it.
 
 ## How it works
 
@@ -47,11 +74,12 @@ needed to run it.
 Implements BOOKOO's published Mini/Ultra scale transmission protocol:
 service `0x0FFE`, weight-notify characteristic `0xFF11`, command
 characteristic `0xFF12`, XOR checksum, and the 20-byte live-weight packet
-layout. It also carries a fix noted in this repo's own protocol audit
-(`BOOKOO_PROTOCOL_AUDIT.md`): the beep-level command byte belongs in
-`DATA2`, not `DATA1`, as an earlier tool in this repo had it wrong. Only
-`tare` is used by the app itself today; `beep`/`autooff` are implemented
-and available for future use.
+layout. It also carries a fix flagged by `BOOKOO_PROTOCOL_AUDIT.md` (in
+`BOOKOO_Protocol_Lab.zip`): the beep-level command byte belongs in
+`DATA2`, not `DATA1`, which a different diagnostic tool reviewed in that
+audit (not included in this repo) had wrong. Only `tare` is used by the
+app itself today; `beep`/`autooff` are implemented and available for
+future use.
 
 ### Scale sources (`scale_source.py`)
 
@@ -155,8 +183,9 @@ one-click **Export CSV…**.
 
 ```
 bookoo_sampling_app/     the application package
+bookoo_sampling_app/assets/  window icon (icon.ico, icon.png)
 tests/                   pytest suite (protocol, state machine, storage, end-to-end)
-requirements.txt         runtime dependency (bleak)
+requirements.txt         runtime dependencies (bleak, sv-ttk)
 requirements-dev.txt     + pytest
 ```
 
