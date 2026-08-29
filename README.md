@@ -131,6 +131,17 @@ export buttons. BLE/asyncio work runs on a background thread
 through a plain `queue.Queue` polled with `root.after`, since Tk itself is
 not thread-safe to call into directly from another thread.
 
+Styled with [sv-ttk](https://github.com/rdbende/Sun-Valley-ttk-theme) (a
+Windows 11/Fluent-style ttk theme) where installed, falling back to stock
+ttk's "clam" theme with a hand-rolled accent style if it isn't -- either
+way the app opens, just less polished. Fonts are pinned explicitly
+("Segoe UI" for everything, "Consolas" for the live weight) rather than
+left to sv-ttk's own "Segoe UI Variable", and the window size is computed
+from actual content on startup instead of a guessed pixel size, so it
+never clips a section regardless of the real font metrics on the machine
+it runs on. The window icon (`assets/icon.ico`/`.png`) is a placeholder
+mark, easy to swap for a real one later.
+
 Battery and flow rate are decoded from every live BLE packet (`protocol.py`)
 and mirrored by the simulator so simulate mode exercises the same code
 path; the battery label turns red and logs a warning once it drops to
