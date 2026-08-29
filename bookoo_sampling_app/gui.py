@@ -111,6 +111,8 @@ class SamplingApp:
         self._session_start_wall: Optional[float] = None
 
         self._build_widgets()
+        if self._theme_note is not None:
+            self._log(self._theme_note)
 
         # Size the window to fit its actual content rather than a guessed
         # pixel size: real "Segoe UI" metrics (and DPI scaling) vary enough
@@ -134,34 +136,60 @@ class SamplingApp:
         its own "Segoe UI Variable" named fonts, which this overrides so
         the app reads correctly even where that font isn't installed."""
         style = ttk.Style(self.root)
+        self._theme_note: Optional[str] = None
         sv_ttk_loaded = False
-        if sv_ttk is not None:
+        if sv_ttk is None:
+            self._theme_note = "sv-ttk not installed (pip install -r requirements.txt) -- using fallback styling"
+        else:
             try:
                 sv_ttk.set_theme("light")
-                sv_ttk_loaded = True
-            except Exception:
-                pass
+                # set_theme() can return without raising even when the
+                # underlying Tcl theme didn't actually take (e.g. a
+                # mismatched/partial install) -- confirm the active theme
+                # is really sv-ttk's before trusting it, rather than just
+                # trusting the absence of an exception.
+                sv_ttk_loaded = style.theme_use() == "sun-valley-light"
+                if not sv_ttk_loaded:
+                    self._theme_note = f"sv-ttk did not activate (active theme: {style.theme_use()!r}) -- using fallback styling"
+            except Exception as exc:
+                self._theme_note = f"sv-ttk failed to load ({exc}) -- using fallback styling"
 
         if not sv_ttk_loaded:
             # No sv-ttk: fall back to "clam", the stock ttk theme that
-            # actually honors custom button colors (the Windows-native
-            # "vista" theme mostly ignores them), and hand-roll a matching
-            # Accent.TButton so style="Accent.TButton" below always
-            # resolves to something instead of raising TclError.
+            # actually honors custom colors (the Windows-native "vista"
+            # theme mostly ignores style.configure() for many widgets,
+            # since it delegates drawing to the OS theme engine -- that
+            # mismatch is what leaves the window looking like plain,
+            # unstyled Tk even though style.configure() calls "succeed").
             try:
                 style.theme_use("clam")
             except tk.TclError:
                 pass
+            # Explicit background/foreground for every widget class used
+            # in this app, so the fallback look is intentional (matches
+            # THEME_BG/THEME_FG) rather than whatever "clam" defaults to.
+            for class_ in ("TFrame", "TLabel", "TLabelframe", "TCheckbutton"):
+                style.configure(class_, background=THEME_BG, foreground=THEME_FG)
+            style.configure("TLabelframe.Label", background=THEME_BG, foreground=THEME_FG)
+            style.configure("TButton", background="#e6e6e6", foreground=THEME_FG)
+            style.map("TButton", background=[("active", "#d6d6d6"), ("disabled", "#f0f0f0")])
             style.configure("Accent.TButton", background=ACCENT, foreground="white", padding=(8, 4))
             style.map(
                 "Accent.TButton",
                 background=[("disabled", "#a0a0a0"), ("pressed", "#004c93"), ("active", "#0067c0")],
                 foreground=[("disabled", "#e6e6e6")],
             )
+            style.configure("Treeview", background="white", fieldbackground="white", foreground=THEME_FG)
 
+        # Explicit on every relevant style class, not just the "." base
+        # style -- some ttk themes (notably Windows' native "vista", used
+        # if both sv-ttk and the "clam" fallback above somehow don't take)
+        # only partially honor a "." font override for certain widget
+        # classes, so each class is set directly as well as "." itself.
         style.configure(".", font=FONT_BASE)
+        for class_ in ("TLabel", "TButton", "TCheckbutton", "TEntry", "TSpinbox", "TCombobox"):
+            style.configure(class_, font=FONT_BASE)
         style.configure("TLabelframe.Label", font=FONT_SECTION_HEADER)
-        style.configure("TButton", font=FONT_BASE)
         style.configure("Accent.TButton", font=FONT_BASE)
         style.configure("Treeview", font=FONT_BASE, rowheight=26)
         style.configure("Treeview.Heading", font=FONT_BASE_BOLD)
@@ -183,7 +211,9 @@ class SamplingApp:
 
         # Widgets with no ttk equivalent (tk.Text, tk.Toplevel) don't pick
         # up the ttk theme automatically -- also retarget Tk's own default
-        # fonts so anything falling back to them still matches.
+        # fonts so anything falling back to them still matches. This also
+        # covers the "vista"-ignores-style-font case above, since Tk's own
+        # named fonts are a separate mechanism ttk themes don't override.
         for name in ("TkDefaultFont", "TkTextFont", "TkHeadingFont", "TkMenuFont"):
             try:
                 tkfont.nametofont(name).configure(family=FONT_FAMILY, size=10)
@@ -227,19 +257,21 @@ class SamplingApp:
         row_pad = {"padx": 6, "pady": 5}
 
         # -- Scale connection ------------------------------------------
-        conn = ttk.LabelFrame(self.root, text="Scale connection", padding=14)
+        conn = ttk.LabelFrame(self.root, text="Scale connection", padding=20)
         conn.pack(fill="x", **pad)
         conn.columnconfigure(1, weight=1)
 
-        ttk.Label(conn, text="Mode:").grid(row=0, column=0, sticky="w", **row_pad)
+        ttk.Label(conn, text="Mode:", font=FONT_BASE).grid(row=0, column=0, sticky="w", **row_pad)
         self.simulate_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(conn, text="Simulate scale (no hardware)", variable=self.simulate_var).grid(
-            row=0, column=1, sticky="w", **row_pad
-        )
+        ttk.Checkbutton(
+            conn, text="Simulate scale (no hardware)", variable=self.simulate_var
+        ).grid(row=0, column=1, sticky="w", **row_pad)
 
-        ttk.Label(conn, text="Status:").grid(row=1, column=0, sticky="w", **row_pad)
+        ttk.Label(conn, text="Status:", font=FONT_BASE).grid(row=1, column=0, sticky="w", **row_pad)
         self.conn_status_var = tk.StringVar(value="Not connected")
-        ttk.Label(conn, textvariable=self.conn_status_var).grid(row=1, column=1, sticky="w", **row_pad)
+        ttk.Label(conn, textvariable=self.conn_status_var, font=FONT_BASE).grid(
+            row=1, column=1, sticky="w", **row_pad
+        )
 
         conn_buttons = ttk.Frame(conn)
         conn_buttons.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
@@ -251,13 +283,15 @@ class SamplingApp:
         self.disconnect_btn.pack(side="left")
 
         # -- Session -----------------------------------------------------
-        setup = ttk.LabelFrame(self.root, text="Session", padding=14)
+        setup = ttk.LabelFrame(self.root, text="Session", padding=20)
         setup.pack(fill="x", **pad)
         setup.columnconfigure(1, weight=1)
 
-        ttk.Label(setup, text="Planned samples (max 100):").grid(row=0, column=0, sticky="w", **row_pad)
+        ttk.Label(setup, text="Planned samples (max 100):", font=FONT_BASE).grid(
+            row=0, column=0, sticky="w", **row_pad
+        )
         self.samples_var = tk.IntVar(value=100)
-        ttk.Spinbox(setup, from_=1, to=100, textvariable=self.samples_var, width=6).grid(
+        ttk.Spinbox(setup, from_=1, to=100, textvariable=self.samples_var, width=6, font=FONT_BASE).grid(
             row=0, column=1, sticky="w", **row_pad
         )
 
@@ -293,7 +327,7 @@ class SamplingApp:
         self.progress_var = tk.StringVar(value="Sample 0 / 100")
         ttk.Label(center, textvariable=self.progress_var, font=FONT_PROGRESS, anchor="center").pack(fill="x")
         self.last_result_var = tk.StringVar(value="Last result: –")
-        ttk.Label(center, textvariable=self.last_result_var, anchor="center").pack(fill="x")
+        ttk.Label(center, textvariable=self.last_result_var, font=FONT_BASE, anchor="center").pack(fill="x")
 
         # -- Controls, grouped by purpose ---------------------------------
         controls = ttk.Frame(self.root)
@@ -318,7 +352,7 @@ class SamplingApp:
         self.redo_btn.pack(side="left", padx=4)
 
         # -- Results -------------------------------------------------------
-        table_frame = ttk.LabelFrame(self.root, text="Results", padding=12)
+        table_frame = ttk.LabelFrame(self.root, text="Results", padding=18)
         table_frame.pack(fill="both", expand=True, **pad)
         columns = ("sample", "weight", "time")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
@@ -338,7 +372,7 @@ class SamplingApp:
         ttk.Button(export, text="Export CSV…", command=self._export_csv).pack(side="left", padx=4)
         ttk.Button(export, text="Export JSON…", command=self._export_json).pack(side="left", padx=4)
 
-        log_frame = ttk.LabelFrame(self.root, text="Messages", padding=10)
+        log_frame = ttk.LabelFrame(self.root, text="Messages", padding=16)
         log_frame.pack(fill="both", padx=14, pady=(0, 14))
         # tk.Text has no ttk equivalent -- styled by hand to match the
         # theme instead of showing stock Tk gray-on-white.
@@ -463,9 +497,11 @@ class SamplingApp:
         ]
         vars_by_field = {}
         for row, (attr, label) in enumerate(fields):
-            ttk.Label(dialog, text=label).grid(row=row, column=0, sticky="w", padx=14, pady=6)
+            ttk.Label(dialog, text=label, font=FONT_BASE).grid(row=row, column=0, sticky="w", padx=14, pady=6)
             var = tk.DoubleVar(value=getattr(self.config, attr))
-            ttk.Entry(dialog, textvariable=var, width=10).grid(row=row, column=1, padx=14, pady=6)
+            ttk.Entry(dialog, textvariable=var, width=10, font=FONT_BASE).grid(
+                row=row, column=1, padx=14, pady=6
+            )
             vars_by_field[attr] = var
 
         def apply_and_close() -> None:
@@ -575,7 +611,7 @@ class SamplingApp:
             ("Duration", f"{minutes}m {seconds:02d}s"),
         ]
         for row, (label, value) in enumerate(stats, start=1):
-            ttk.Label(dialog, text=f"{label}:").grid(row=row, column=0, sticky="w", padx=16, pady=3)
+            ttk.Label(dialog, text=f"{label}:", font=FONT_BASE).grid(row=row, column=0, sticky="w", padx=16, pady=3)
             ttk.Label(dialog, text=value, font=FONT_BASE_BOLD).grid(row=row, column=1, sticky="w", padx=16, pady=3)
 
         buttons = ttk.Frame(dialog)
