@@ -31,6 +31,7 @@ from .session import SamplingSession
 POLL_INTERVAL_MS = 50
 DEFAULT_DATA_DIR = Path.home() / "BookooSamplingApp" / "sessions"
 ASSETS_DIR = Path(__file__).parent / "assets"
+SCROLLBAR_WIDTH_ALLOWANCE = 20  # rough width of a vertical scrollbar, for initial sizing
 
 # Warn once the scale's own reported battery drops to/below this, and don't
 # warn again until it's recovered well past it (e.g. a battery swap).
@@ -114,15 +115,26 @@ class SamplingApp:
         if self._theme_note is not None:
             self._log(self._theme_note)
 
-        # Size the window to fit its actual content rather than a guessed
-        # pixel size: real "Segoe UI" metrics (and DPI scaling) vary enough
-        # across Windows machines that a hardcoded geometry risks clipping
-        # sections off the bottom, as a fixed guess did during styling.
+        # Size the window to fit its actual content, but never taller than
+        # the screen: real "Segoe UI" metrics (and DPI scaling) vary enough
+        # across Windows machines that a hardcoded geometry risks clipping a
+        # section, and the content itself can simply be taller than a given
+        # monitor. Cap to the screen and let the scroll container (see
+        # _build_scroll_container) handle whatever doesn't fit -- its
+        # scrollbar only appears when it's actually needed.
         self.root.update_idletasks()
-        width = max(720, self.root.winfo_reqwidth())
-        height = max(760, self.root.winfo_reqheight())
+        content_width = self.content.winfo_reqwidth()
+        content_height = self.content.winfo_reqheight()
+        screen_height = self.root.winfo_screenheight()
+        screen_width = self.root.winfo_screenwidth()
+        # Leave room for the taskbar/window chrome rather than filling the
+        # whole physical display.
+        max_height = max(400, screen_height - 120)
+        max_width = max(600, screen_width - 120)
+        width = min(max(720, content_width + SCROLLBAR_WIDTH_ALLOWANCE), max_width)
+        height = min(max(480, content_height), max_height)
         self.root.geometry(f"{width}x{height}")
-        self.root.minsize(width, height)
+        self.root.minsize(min(640, width), min(420, height))
 
         self._refresh_button_states()
         self.root.after(POLL_INTERVAL_MS, self._poll_events)
@@ -252,12 +264,58 @@ class SamplingApp:
 
     # -- widget construction ---------------------------------------------
 
+    def _build_scroll_container(self) -> ttk.Frame:
+        """A vertically scrollable area filling the window: on a short
+        screen the natural content height can exceed what's available, so
+        everything is built inside this instead of packing straight into
+        root. The scrollbar only appears once content actually overflows
+        (see _update_scrollbar), and the mouse wheel scrolls it while the
+        pointer is anywhere over the window."""
+        outer = ttk.Frame(self.root)
+        outer.pack(fill="both", expand=True)
+
+        self.canvas = tk.Canvas(outer, background=THEME_BG, highlightthickness=0)
+        self.vscroll = ttk.Scrollbar(outer, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.vscroll.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        # vscroll itself is packed/unpacked on demand by _update_scrollbar
+
+        content = ttk.Frame(self.canvas)
+        self._content_window = self.canvas.create_window((0, 0), window=content, anchor="nw")
+
+        content.bind("<Configure>", lambda _e: self._update_scrollbar())
+        self.canvas.bind(
+            "<Configure>", lambda e: (self.canvas.itemconfigure(self._content_window, width=e.width), self._update_scrollbar())
+        )
+        # Global-while-hovering pattern: bind_all only for as long as the
+        # pointer is over the canvas, so this doesn't also hijack scrolling
+        # e.g. inside the results Treeview (which scrolls itself natively).
+        self.canvas.bind("<Enter>", lambda _e: self.canvas.bind_all("<MouseWheel>", self._on_mousewheel))
+        self.canvas.bind("<Leave>", lambda _e: self.canvas.unbind_all("<MouseWheel>"))
+
+        return content
+
+    def _on_mousewheel(self, event: tk.Event) -> None:
+        if self.vscroll.winfo_ismapped():
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _update_scrollbar(self) -> None:
+        bbox = self.canvas.bbox("all")
+        content_height = (bbox[3] - bbox[1]) if bbox else 0
+        needs_scroll = content_height > self.canvas.winfo_height()
+        self.canvas.configure(scrollregion=bbox)
+        if needs_scroll and not self.vscroll.winfo_ismapped():
+            self.vscroll.pack(side="right", fill="y")
+        elif not needs_scroll and self.vscroll.winfo_ismapped():
+            self.vscroll.pack_forget()
+
     def _build_widgets(self) -> None:
+        self.content = self._build_scroll_container()
         pad = {"padx": 14, "pady": (0, 14)}
         row_pad = {"padx": 6, "pady": 5}
 
         # -- Scale connection ------------------------------------------
-        conn = ttk.LabelFrame(self.root, text="Scale connection", padding=20)
+        conn = ttk.LabelFrame(self.content, text="Scale connection", padding=20)
         conn.pack(fill="x", **pad)
         conn.columnconfigure(1, weight=1)
 
@@ -283,7 +341,7 @@ class SamplingApp:
         self.disconnect_btn.pack(side="left")
 
         # -- Session -----------------------------------------------------
-        setup = ttk.LabelFrame(self.root, text="Session", padding=20)
+        setup = ttk.LabelFrame(self.content, text="Session", padding=20)
         setup.pack(fill="x", **pad)
         setup.columnconfigure(1, weight=1)
 
@@ -302,7 +360,7 @@ class SamplingApp:
         ttk.Button(setup_buttons, text="Settings…", command=self._open_settings).pack(side="left")
 
         # -- Live readout --------------------------------------------------
-        center = ttk.Frame(self.root)
+        center = ttk.Frame(self.content)
         center.pack(fill="x", padx=14, pady=(0, 14))
         self.weight_var = tk.StringVar(value="---.- g")
         ttk.Label(center, textvariable=self.weight_var, font=FONT_WEIGHT_DISPLAY, anchor="center").pack(fill="x")
@@ -330,7 +388,7 @@ class SamplingApp:
         ttk.Label(center, textvariable=self.last_result_var, font=FONT_BASE, anchor="center").pack(fill="x")
 
         # -- Controls, grouped by purpose ---------------------------------
-        controls = ttk.Frame(self.root)
+        controls = ttk.Frame(self.content)
         controls.pack(fill="x", **pad)
 
         session_controls = ttk.Frame(controls)
@@ -352,7 +410,7 @@ class SamplingApp:
         self.redo_btn.pack(side="left", padx=4)
 
         # -- Results -------------------------------------------------------
-        table_frame = ttk.LabelFrame(self.root, text="Results", padding=18)
+        table_frame = ttk.LabelFrame(self.content, text="Results", padding=18)
         table_frame.pack(fill="both", expand=True, **pad)
         columns = ("sample", "weight", "time")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
@@ -367,12 +425,12 @@ class SamplingApp:
         self.tree.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
 
-        export = ttk.Frame(self.root)
+        export = ttk.Frame(self.content)
         export.pack(fill="x", **pad)
         ttk.Button(export, text="Export CSV…", command=self._export_csv).pack(side="left", padx=4)
         ttk.Button(export, text="Export JSON…", command=self._export_json).pack(side="left", padx=4)
 
-        log_frame = ttk.LabelFrame(self.root, text="Messages", padding=16)
+        log_frame = ttk.LabelFrame(self.content, text="Messages", padding=16)
         log_frame.pack(fill="both", padx=14, pady=(0, 14))
         # tk.Text has no ttk equivalent -- styled by hand to match the
         # theme instead of showing stock Tk gray-on-white.
