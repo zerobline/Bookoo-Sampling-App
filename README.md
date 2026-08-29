@@ -123,13 +123,22 @@ table wherever the operator chooses.
 ### GUI (`gui.py`, `async_bridge.py`)
 
 One Tkinter screen: connect/disconnect, planned sample count, a big live
-weight, status, progress (`Sample 23 / 100`), last result, the main
-controls (Start Test, Pause, Stop, Manual Tare, Accept Measurement, Redo
-Sample), a results table, and export buttons. BLE/asyncio work runs on a
-background thread (`async_bridge.AsyncLoopThread`); all cross-thread
-handoff to Tk goes through a plain `queue.Queue` polled with `root.after`,
-since Tk itself is not thread-safe to call into directly from another
-thread.
+weight with battery % and live flow rate (g/s) underneath, status, progress
+(`Sample 23 / 100`), last result, the main controls (Start Test, Pause,
+Stop, Manual Tare, Accept Measurement, Redo Sample), a results table, and
+export buttons. BLE/asyncio work runs on a background thread
+(`async_bridge.AsyncLoopThread`); all cross-thread handoff to Tk goes
+through a plain `queue.Queue` polled with `root.after`, since Tk itself is
+not thread-safe to call into directly from another thread.
+
+Battery and flow rate are decoded from every live BLE packet (`protocol.py`)
+and mirrored by the simulator so simulate mode exercises the same code
+path; the battery label turns red and logs a warning once it drops to
+15% (reset once it recovers past 25%). Clicking **Stop** while samples
+remain asks for confirmation, and a session ending — by completion or by
+Stop, as long as at least one sample was recorded — shows a summary
+dialog (count, average, min/max, standard deviation, duration) with a
+one-click **Export CSV…**.
 
 ## Repository layout
 

@@ -9,6 +9,7 @@ handed to Tk via a thread-safe queue polled with ``root.after``.
 from __future__ import annotations
 
 import queue
+import statistics
 import time
 import tkinter as tk
 from dataclasses import dataclass
@@ -23,6 +24,11 @@ from .session import SamplingSession
 
 POLL_INTERVAL_MS = 50
 DEFAULT_DATA_DIR = Path.home() / "BookooSamplingApp" / "sessions"
+
+# Warn once the scale's own reported battery drops to/below this, and don't
+# warn again until it's recovered well past it (e.g. a battery swap).
+LOW_BATTERY_WARN_PCT = 15
+LOW_BATTERY_RESET_PCT = 25
 
 # Rough color per status, just to make the state visible at a glance.
 STATUS_COLORS = {
@@ -70,6 +76,8 @@ class SamplingApp:
 
         self.connected = False
         self.session_started = False
+        self._low_battery_warned = False
+        self._session_start_wall: Optional[float] = None
 
         self._build_widgets()
         self._refresh_button_states()
@@ -109,6 +117,13 @@ class SamplingApp:
         ttk.Label(center, textvariable=self.weight_var, font=("Segoe UI", 56, "bold"), anchor="center").pack(
             fill="x"
         )
+        telemetry = ttk.Frame(center)
+        telemetry.pack()
+        self.battery_var = tk.StringVar(value="Battery: --")
+        self.battery_label = ttk.Label(telemetry, textvariable=self.battery_var, font=("Segoe UI", 10))
+        self.battery_label.pack(side="left", padx=10)
+        self.flow_var = tk.StringVar(value="Flow: -- g/s")
+        ttk.Label(telemetry, textvariable=self.flow_var, font=("Segoe UI", 10)).pack(side="left", padx=10)
         self.status_var = tk.StringVar(value=STATUS_LABELS[State.IDLE])
         self.status_label = ttk.Label(center, textvariable=self.status_var, font=("Segoe UI", 18), anchor="center")
         self.status_label.pack(fill="x")
@@ -183,6 +198,7 @@ class SamplingApp:
         self.connected = True
         self.conn_status_var.set(f"Connected ({result})")
         self._log(f"Connected to scale ({result})")
+        self._low_battery_warned = False
         self._refresh_button_states()
 
     def _on_disconnect(self) -> None:
@@ -208,6 +224,7 @@ class SamplingApp:
         self.session.config = self.config
         self.session.start()
         self.session_started = True
+        self._session_start_wall = time.time()
         self.tree.delete(*self.tree.get_children())
         self.last_result_var.set("Last result: –")
         self._log(f"Session {self.session.session_id} started, target {self.session.planned_samples} samples")
@@ -220,9 +237,16 @@ class SamplingApp:
             self.async_loop.run_coro(self.session.pause())
 
     def _on_stop(self) -> None:
+        count = self.session.machine.sample_count
+        planned = self.session.planned_samples
+        if self.session_started and count < planned:
+            if not messagebox.askyesno("Stop test?", f"{count} of {planned} samples completed. Stop the test now?"):
+                return
         self.async_loop.run_coro(self.session.stop())
         self.session_started = False
         self._refresh_button_states()
+        if count > 0:
+            self._show_session_summary("Stopped by operator")
 
     def _on_manual_tare(self) -> None:
         self.async_loop.run_coro(self.session.manual_tare())
@@ -277,6 +301,7 @@ class SamplingApp:
                     self._handle_event(item)
                 elif isinstance(item, ScaleReading):
                     self.weight_var.set(f"{item.weight_g:6.1f} g")
+                    self._handle_telemetry(item)
                 elif isinstance(item, _ConnectOutcome):
                     self._connect_finished(item.result, item.error)
                 elif isinstance(item, _DisconnectOutcome):
@@ -294,6 +319,7 @@ class SamplingApp:
             if event.state == State.COMPLETE:
                 self._log("Session complete")
                 self.session_started = False
+                self._show_session_summary("Planned sample count reached")
             self._refresh_button_states()
         elif event.kind == "sample_recorded":
             self.tree.insert(
@@ -316,6 +342,61 @@ class SamplingApp:
         self.log.insert("end", f"[{time.strftime('%H:%M:%S')}] {message}\n")
         self.log.see("end")
         self.log.configure(state="disabled")
+
+    def _handle_telemetry(self, reading: ScaleReading) -> None:
+        """Battery/flow are already decoded by protocol.py for real hardware,
+        and by the simulator for parity -- just render + watch them here."""
+        battery = reading.decoded.get("battery_pct")
+        if battery is not None:
+            self.battery_var.set(f"Battery: {battery:.0f}%")
+            if battery <= LOW_BATTERY_WARN_PCT:
+                if not self._low_battery_warned:
+                    self._low_battery_warned = True
+                    self._log(f"WARNING: scale battery low ({battery:.0f}%)")
+                self.battery_label.configure(foreground="#cf222e")
+            else:
+                self.battery_label.configure(foreground="")
+                if battery >= LOW_BATTERY_RESET_PCT:
+                    self._low_battery_warned = False
+
+        flow = reading.decoded.get("flow_g_s")
+        if flow is not None:
+            self.flow_var.set(f"Flow: {flow:+.1f} g/s")
+
+    def _show_session_summary(self, reason: str) -> None:
+        samples = self.session.store.samples if self.session.store is not None else []
+        if not samples:
+            self._log(f"Session ended ({reason}); no samples recorded.")
+            return
+
+        weights = [s.final_weight_g for s in samples]
+        elapsed_s = time.time() - self._session_start_wall if self._session_start_wall else 0.0
+        minutes, seconds = divmod(int(elapsed_s), 60)
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Session summary")
+        dialog.transient(self.root)
+
+        ttk.Label(dialog, text=reason, font=("Segoe UI", 11, "bold")).grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 6)
+        )
+        stats = [
+            ("Samples recorded", str(len(weights))),
+            ("Average weight", f"{statistics.fmean(weights):.1f} g"),
+            ("Min / Max", f"{min(weights):.1f} g / {max(weights):.1f} g"),
+            ("Std. deviation", f"{statistics.pstdev(weights):.2f} g" if len(weights) >= 2 else "n/a"),
+            ("Duration", f"{minutes}m {seconds:02d}s"),
+        ]
+        for row, (label, value) in enumerate(stats, start=1):
+            ttk.Label(dialog, text=f"{label}:").grid(row=row, column=0, sticky="w", padx=12, pady=2)
+            ttk.Label(dialog, text=value).grid(row=row, column=1, sticky="w", padx=12, pady=2)
+
+        buttons = ttk.Frame(dialog)
+        buttons.grid(row=len(stats) + 1, column=0, columnspan=2, pady=10)
+        ttk.Button(buttons, text="Export CSV…", command=lambda: (self._export_csv(), dialog.destroy())).pack(
+            side="left", padx=6
+        )
+        ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side="left", padx=6)
 
     # -- export ----------------------------------------------------------
 

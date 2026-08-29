@@ -183,6 +183,9 @@ class SimulatedScaleSource(ScaleSource):
         target_weight_range: tuple[float, float] = (110.0, 130.0),
         seed: Optional[int] = None,
         timing: Optional[SimulatorTiming] = None,
+        battery_start_pct: float = 100.0,
+        battery_drain_per_reading: float = 0.01,
+        battery_floor_pct: float = 10.0,
     ):
         super().__init__()
         self.cycle_count = cycle_count
@@ -192,6 +195,15 @@ class SimulatedScaleSource(ScaleSource):
         self._rng = random.Random(seed)
         self._task: Optional[asyncio.Task] = None
         self._stop = False
+        # A real scale reports battery/flow in every live packet; matched
+        # here so simulate mode exercises the same GUI code paths as real
+        # hardware (see gui.py's battery/flow display and low-battery
+        # warning). Draining it slowly lets a long demo/test run actually
+        # reach the low-battery warning threshold instead of staying flat.
+        self._battery_pct = battery_start_pct
+        self._battery_drain_per_reading = battery_drain_per_reading
+        self._battery_floor_pct = battery_floor_pct
+        self._prev_weight_for_flow = 0.0
 
     async def connect(self) -> str:
         self.is_connected = True
@@ -216,9 +228,17 @@ class SimulatedScaleSource(ScaleSource):
         # ScaleSource interface the app calls into during TARING.
         return
 
-    async def _emit_weight(self, weight_g: float) -> None:
-        decoded = {"kind": "live", "weight_g": weight_g}
+    async def _emit_weight(self, weight_g: float, flow_g_s: float = 0.0) -> None:
+        if self._battery_pct > self._battery_floor_pct:
+            self._battery_pct = max(self._battery_floor_pct, self._battery_pct - self._battery_drain_per_reading)
+        decoded = {
+            "kind": "live",
+            "weight_g": weight_g,
+            "flow_g_s": flow_g_s,
+            "battery_pct": round(self._battery_pct),
+        }
         self._emit(ScaleReading(monotonic_s=time.monotonic(), weight_g=weight_g, decoded=decoded))
+        self._prev_weight_for_flow = weight_g
 
     def _noise(self, sigma: float = 0.05) -> float:
         return self._rng.gauss(0, sigma)
@@ -226,18 +246,21 @@ class SimulatedScaleSource(ScaleSource):
     async def _hold(self, weight_g: float, seconds: float) -> None:
         steps = max(1, int(seconds * self.hz))
         for _ in range(steps):
-            await self._emit_weight(weight_g + self._noise())
+            await self._emit_weight(weight_g + self._noise(), flow_g_s=0.0)
             await asyncio.sleep(1.0 / self.hz)
 
     async def _ramp(self, start: float, end: float, seconds: float) -> None:
         steps = max(1, int(seconds * self.hz))
+        dt = 1.0 / self.hz
         for i in range(steps):
             frac = (i + 1) / steps
             # ease-out so the pour visibly slows near the target, like a
             # real machine finishing a shot
             eased = 1 - (1 - frac) ** 2
-            await self._emit_weight(start + (end - start) * eased + self._noise())
-            await asyncio.sleep(1.0 / self.hz)
+            weight = start + (end - start) * eased + self._noise()
+            flow = (weight - self._prev_weight_for_flow) / dt
+            await self._emit_weight(weight, flow_g_s=flow)
+            await asyncio.sleep(dt)
 
     async def _run(self) -> None:
         timing = self.timing
