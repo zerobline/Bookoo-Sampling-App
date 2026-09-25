@@ -1,0 +1,13 @@
+{
+  "id": "einmaleins",
+  "name": "Einmaleins",
+  "subtitle": "Rechnen mit mal",
+  "icon": "icon.svg",
+  "color": "#F4A340",
+  "order": 2,
+  "version": "1.0.0",
+  "files": [
+    "style.css",
+    "logic.js"
+  ]
+}

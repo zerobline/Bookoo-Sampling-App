@@ -1,0 +1,13 @@
+{
+  "id": "uhr-lesen",
+  "name": "Uhr lesen",
+  "subtitle": "Wie spät ist es?",
+  "icon": "icon.svg",
+  "color": "#4A90E2",
+  "order": 1,
+  "version": "1.0.0",
+  "files": [
+    "style.css",
+    "clock.js"
+  ]
+}

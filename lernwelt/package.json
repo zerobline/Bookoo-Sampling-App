@@ -1,0 +1,14 @@
+{
+  "name": "lernwelt",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Launcher für Lern-Apps für Kinder (Uhr lesen, Einmaleins, …) – offline-fähige PWA ohne Build-Schritt.",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs 8080",
+    "test": "node --test \"tests/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
