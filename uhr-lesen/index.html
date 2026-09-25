@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Uhr lesen</title>
+<meta name="description" content="Uhr lesen üben: analoge Uhr, gesprochene deutsche Uhrzeit. Ohne Werbung, ohne Konto, offline.">
+<meta name="theme-color" content="#eef5f1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ Start ============ -->
+  <section id="screen-start" class="screen">
+    <header class="start-head">
+      <h1 class="brand">Uhr lesen</h1>
+      <button type="button" class="parent-link" id="open-parent">Für Eltern</button>
+    </header>
+
+    <div id="suggest-banner" class="suggest-banner" hidden>
+      <p id="banner-text"></p>
+      <div class="row-actions">
+        <button type="button" class="hold-btn" id="banner-yes"><span class="hold-fill"></span><span class="hold-label">Eltern: gedrückt halten</span></button>
+        <button type="button" class="btn-soft" id="banner-no">Noch nicht</button>
+      </div>
+    </div>
+
+    <div class="pick-group">
+      <h2 class="pick-title">Hilfe an der Uhr</h2>
+      <div class="pick-row pick-row-3" id="pick-help">
+        <button type="button" class="pick" data-value="viel"><span class="mini-clock" data-help="viel"></span><span class="pick-label">Viel Hilfe</span></button>
+        <button type="button" class="pick" data-value="wenig"><span class="mini-clock" data-help="wenig"></span><span class="pick-label">Wenig Hilfe</span></button>
+        <button type="button" class="pick" data-value="keine"><span class="mini-clock" data-help="keine"></span><span class="pick-label">Keine Hilfe</span></button>
+      </div>
+    </div>
+
+    <div class="pick-group">
+      <h2 class="pick-title">Stufe</h2>
+      <div class="pick-row pick-row-5" id="pick-stufe">
+        <button type="button" class="pick pick-stufe" data-value="1"><span class="stufe-num">1</span><span class="pick-label">volle Stunden</span><span class="pick-example">drei Uhr</span></button>
+        <button type="button" class="pick pick-stufe" data-value="2"><span class="stufe-num">2</span><span class="pick-label">+ halbe</span><span class="pick-example">halb vier</span></button>
+        <button type="button" class="pick pick-stufe" data-value="3"><span class="stufe-num">3</span><span class="pick-label">+ Viertel</span><span class="pick-example">Viertel nach drei</span></button>
+        <button type="button" class="pick pick-stufe" data-value="4"><span class="stufe-num">4</span><span class="pick-label">+ 5 Minuten</span><span class="pick-example">fünf vor halb vier</span></button>
+        <button type="button" class="pick pick-stufe" data-value="5"><span class="stufe-num">5</span><span class="pick-label">jede Minute</span><span class="pick-example">siebzehn nach drei</span></button>
+      </div>
+    </div>
+
+    <div class="pick-group">
+      <h2 class="pick-title">So antworte ich</h2>
+      <div class="pick-row pick-row-3" id="pick-mode">
+        <button type="button" class="pick pick-mode" data-value="leicht"><span class="dots" aria-hidden="true"><i></i></span><span class="pick-label">Leicht</span><span class="pick-example">Antwort antippen</span></button>
+        <button type="button" class="pick pick-mode" data-value="mittel"><span class="dots" aria-hidden="true"><i></i><i></i></span><span class="pick-label">Mittel</span><span class="pick-example">Wörter legen</span></button>
+        <button type="button" class="pick pick-mode" data-value="schwer"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="pick-label">Schwer</span><span class="pick-example">Zeiger stellen</span></button>
+      </div>
+    </div>
+
+    <button type="button" class="btn-go" id="start-session">Los geht’s!</button>
+  </section>
+
+  <!-- ============ Quiz ============ -->
+  <section id="screen-quiz" class="screen" hidden>
+    <header class="quiz-head">
+      <button type="button" class="icon-btn" id="quit-session" aria-label="Beenden">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <ol class="progress" id="progress" aria-label="Fortschritt"></ol>
+    </header>
+
+    <div class="quiz-body">
+      <div class="clock-wrap">
+        <div id="clock" class="clock-holder"></div>
+        <p class="help-note" id="help-note" hidden></p>
+      </div>
+
+      <div class="answer-area">
+        <div class="prompt">
+          <p class="prompt-text" id="prompt-text">Wie spät ist es?</p>
+          <button type="button" class="speak-btn" id="prompt-speak" aria-label="Vorlesen"></button>
+        </div>
+
+        <!-- Leicht -->
+        <div class="choices" id="choices" hidden></div>
+
+        <!-- Mittel -->
+        <div class="tiles-wrap" id="tiles-wrap" hidden>
+          <div class="build" id="build" aria-label="Deine Antwort"><span class="build-empty">Tippe die Wörter an</span></div>
+          <div class="tiles" id="tiles"></div>
+          <div class="row-actions">
+            <button type="button" class="btn-soft" id="build-speak">Anhören</button>
+            <button type="button" class="btn-soft" id="build-clear">Löschen</button>
+            <button type="button" class="btn-check" id="build-check" disabled>Fertig</button>
+          </div>
+        </div>
+
+        <!-- Schwer -->
+        <div class="set-wrap" id="set-wrap" hidden>
+          <p class="set-hint">Dreh die Zeiger. Der <b class="c-hour">kleine</b> zeigt die Stunde, der <b class="c-minute">große</b> die Minuten.</p>
+          <button type="button" class="btn-check" id="set-check">Fertig</button>
+        </div>
+
+        <div class="feedback" id="feedback" hidden>
+          <div class="feedback-msg" id="feedback-msg"></div>
+          <button type="button" class="btn-go btn-next" id="next-question" hidden>Weiter</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Reward ============ -->
+  <section id="screen-reward" class="screen" hidden>
+    <div class="reward">
+      <h2 class="reward-title" id="reward-title">Geschafft!</h2>
+      <div class="reward-stars" id="reward-stars"></div>
+      <p class="reward-text" id="reward-text"></p>
+
+      <div class="suggest-card" id="suggest-card" hidden>
+        <p id="suggest-text"></p>
+        <div class="row-actions">
+          <button type="button" class="hold-btn" id="suggest-yes"><span class="hold-fill"></span><span class="hold-label">Eltern: gedrückt halten</span></button>
+          <button type="button" class="btn-soft" id="suggest-no">Noch nicht</button>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button type="button" class="btn-go" id="again">Nochmal</button>
+        <button type="button" class="btn-soft" id="to-start">Zum Start</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Parent ============ -->
+  <section id="screen-parent" class="screen" hidden>
+    <header class="parent-head">
+      <h2>Für Eltern</h2>
+      <button type="button" class="btn-soft" id="parent-close">Zurück</button>
+    </header>
+
+    <div class="gate" id="parent-gate">
+      <p>Dieser Bereich ist für Erwachsene. Halte den Knopf gedrückt, bis er voll ist.</p>
+      <button type="button" class="hold-btn" id="parent-unlock"><span class="hold-fill"></span><span class="hold-label">Gedrückt halten</span></button>
+    </div>
+
+    <div class="parent-body" id="parent-body" hidden>
+      <div class="panel">
+        <h3>Wo passieren die meisten Fehler?</h3>
+        <p class="panel-note">Zählt, wie oft eine Zeitart beim ersten Versuch falsch gelesen wurde.</p>
+        <div id="stats-table"></div>
+        <div id="error-types"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Letzte Runden</h3>
+        <div id="history"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Einstellungen</h3>
+        <div class="setting">
+          <label for="set-region">Regionale Formen</label>
+          <select id="set-region">
+            <option value="standard">Aus (Viertel nach / Viertel vor)</option>
+            <option value="viertel">Viertel vier, drei viertel vier</option>
+            <option value="ch">Schweiz: „ab“ statt „nach“</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="set-speech">Vorlesen</label>
+          <input type="checkbox" id="set-speech" class="switch">
+        </div>
+        <div class="setting">
+          <label for="set-rate">Sprechtempo</label>
+          <input type="range" id="set-rate" min="0.6" max="1.2" step="0.1">
+        </div>
+        <div class="setting">
+          <label for="set-sound">Töne</label>
+          <input type="checkbox" id="set-sound" class="switch">
+        </div>
+        <p class="panel-note" id="voice-note"></p>
+        <div class="setting">
+          <span>Fortschritt löschen</span>
+          <button type="button" class="hold-btn hold-danger" id="reset-progress"><span class="hold-fill"></span><span class="hold-label">Gedrückt halten</span></button>
+        </div>
+      </div>
+      <p class="panel-note">Alle Daten bleiben auf diesem Gerät. Keine Werbung, kein Konto, keine Verbindung ins Internet nötig.</p>
+    </div>
+  </section>
+
+</div>
+<script src="time-phrase.js"></script>
+<script src="clock.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

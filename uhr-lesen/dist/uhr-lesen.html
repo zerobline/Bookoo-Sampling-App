@@ -1,0 +1,1990 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Uhr lesen</title>
+<meta name="description" content="Uhr lesen üben: analoge Uhr, gesprochene deutsche Uhrzeit. Ohne Werbung, ohne Konto, offline.">
+<meta name="theme-color" content="#eef5f1">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iI2VlZjVmMSIvPgogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMTc2IiBmaWxsPSIjZmZmZGY3IiBzdHJva2U9IiMyMjMxNGEiIHN0cm9rZS13aWR0aD0iMjQiLz4KICA8cGF0aCBkPSJNMjU2IDI1NiBMMjU2IDgwIEExNzYgMTc2IDAgMCAxIDQzMiAyNTYgWiIgZmlsbD0iI2NkZWVkYiIvPgogIDxsaW5lIHgxPSIyNTYiIHkxPSIyNTYiIHgyPSIyNTYiIHkyPSIxNTAiIHN0cm9rZT0iI2Q5NDEyZiIgc3Ryb2tlLXdpZHRoPSIzMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPGxpbmUgeDE9IjI1NiIgeTE9IjI1NiIgeDI9IjM5MCIgeTI9IjI1NiIgc3Ryb2tlPSIjMmE2NGM4IiBzdHJva2Utd2lkdGg9IjE4IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjIwIiBmaWxsPSIjMjIzMTRhIi8+Cjwvc3ZnPgo=" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@500;700;800&display=swap">
+<style>
+/* Uhr lesen – styles */
+
+:root {
+  --ground: #eef5f1;
+  --card: #ffffff;
+  --card-2: #f6faf8;
+  --ink: #22314a;
+  --muted: #5b6b7e;
+  --line: #d3e0da;
+  --hour: #d9412f;
+  --minute: #2a64c8;
+  --good: #2e9d62;
+  --good-tint: #dcf2e5;
+  --oops: #c9651b;
+  --oops-tint: #fde8d6;
+  --sun: #f6b81a;
+  --sun-ink: #3a2a00;
+  --focus: #2a64c8;
+  --selected: #e3ecfb;
+
+  /* The clock itself is a physical object: same in both themes. */
+  --face: #fffdf7;
+  --rim: #22314a;
+  --face-ink: #22314a;
+  --face-muted: #7c8797;
+  --q-nach-1: #cdeedb;
+  --q-nach-2: #e3f6ea;
+  --q-vor-1: #fbd9bb;
+  --q-vor-2: #fde9d6;
+  --ring: #f2f6fb;
+  --glow: #ffd23f;
+
+  --radius: 18px;
+  --display: "Baloo 2", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --reading: "Andika", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #152130;
+    --card: #1f2d40;
+    --card-2: #1a2738;
+    --ink: #eaf1f7;
+    --muted: #a8b6c6;
+    --line: #33455c;
+    --good: #52c98a;
+    --good-tint: #1f3d33;
+    --oops: #f0a45e;
+    --oops-tint: #3d2c1f;
+    --focus: #7fb0ff;
+    --selected: #243e63;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #152130;
+  --card: #1f2d40;
+  --card-2: #1a2738;
+  --ink: #eaf1f7;
+  --muted: #a8b6c6;
+  --line: #33455c;
+  --good: #52c98a;
+  --good-tint: #1f3d33;
+  --oops: #f0a45e;
+  --oops-tint: #3d2c1f;
+  --focus: #7fb0ff;
+  --selected: #243e63;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 18px;
+  line-height: 1.35;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+[hidden] { display: none !important; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.app {
+  min-height: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+  padding-block: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+}
+.screen { display: flex; flex-direction: column; gap: 18px; min-height: calc(100dvh - 32px); }
+
+/* ---------- shared buttons ---------- */
+.btn-go {
+  border: 0;
+  border-radius: 999px;
+  background: var(--sun);
+  color: var(--sun-ink);
+  font-weight: 800;
+  font-size: 1.5rem;
+  padding: 14px 36px;
+  min-height: 64px;
+  box-shadow: 0 5px 0 #c98f00;
+  transition: transform .08s, box-shadow .08s;
+}
+.btn-go:active { transform: translateY(4px); box-shadow: 0 1px 0 #c98f00; }
+.btn-soft {
+  border: 2px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 10px 22px;
+  min-height: 52px;
+  font-weight: 700;
+}
+.btn-check {
+  border: 0;
+  border-radius: 999px;
+  background: var(--good);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.25rem;
+  padding: 10px 30px;
+  min-height: 56px;
+}
+.btn-check:disabled { opacity: .4; cursor: default; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+
+.icon-btn {
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 2px solid var(--line); background: var(--card);
+  display: grid; place-items: center; flex: none;
+}
+.icon-btn svg { width: 22px; height: 22px; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; fill: none; }
+
+.speak-btn {
+  flex: none;
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 0; background: var(--selected);
+  display: grid; place-items: center;
+}
+.speak-btn svg { width: 26px; height: 26px; fill: var(--minute); }
+:root[data-theme="dark"] .speak-btn svg { fill: var(--focus); }
+
+/* ---------- start ---------- */
+.start-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand {
+  margin: 0;
+  font-size: clamp(2.2rem, 7vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+.brand::before {
+  content: "";
+  display: inline-block;
+  width: .8em; height: .8em;
+  margin-right: .25em;
+  vertical-align: -.08em;
+  border-radius: 50%;
+  border: .09em solid currentColor;
+  background:
+    linear-gradient(var(--hour), var(--hour)) 50% 30% / .09em .3em no-repeat,
+    linear-gradient(var(--minute), var(--minute)) 70% 50% / .3em .07em no-repeat,
+    var(--face);
+}
+.parent-link {
+  border: 0; background: none; color: var(--muted);
+  font-weight: 700; font-size: .95rem; padding: 10px 4px; text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pick-group { display: flex; flex-direction: column; gap: 8px; }
+.pick-title { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--muted); }
+.pick-row { display: grid; gap: 10px; }
+.pick-row-3 { grid-template-columns: repeat(3, 1fr); }
+.pick-row-5 { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 620px) {
+  .pick-row-5 { grid-template-columns: repeat(3, 1fr); }
+}
+.pick {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
+  border: 3px solid var(--line);
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 10px 6px 12px;
+  min-height: 72px;
+  text-align: center;
+  transition: border-color .12s, background .12s;
+}
+.pick[aria-pressed="true"] { border-color: var(--minute); background: var(--selected); }
+:root[data-theme="dark"] .pick[aria-pressed="true"] { border-color: var(--focus); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pick[aria-pressed="true"] { border-color: var(--focus); } }
+.pick-label { font-weight: 700; font-size: 1.05rem; line-height: 1.1; }
+.pick-example { font-family: var(--reading); font-size: .82rem; color: var(--muted); line-height: 1.2; }
+.mini-clock { width: min(92px, 22vw); aspect-ratio: 1; max-width: 100%; display: block; }
+.mini-clock svg { width: 100%; height: 100%; }
+.stufe-num {
+  font-size: 1.7rem; font-weight: 800; line-height: 1;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--card-2); border: 2px solid var(--line);
+}
+.pick[aria-pressed="true"] .stufe-num { background: var(--minute); color: #fff; border-color: var(--minute); }
+.dots { display: flex; gap: 5px; height: 20px; align-items: center; }
+.dots i { width: 14px; height: 14px; border-radius: 50%; background: var(--sun); display: block; }
+#start-session { align-self: center; margin-top: 4px; min-width: min(320px, 100%); }
+
+.suggest-banner {
+  background: var(--good-tint); border-radius: var(--radius);
+  padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px;
+  align-items: center; justify-content: space-between;
+}
+.suggest-banner p { margin: 0; font-weight: 700; }
+
+/* ---------- quiz ---------- */
+.quiz-head { display: flex; align-items: center; gap: 14px; }
+.progress { list-style: none; margin: 0; padding: 0; display: flex; gap: 3px; flex: 1; flex-wrap: wrap; }
+.progress li {
+  width: 25px; height: 25px; flex: none;
+  display: grid; place-items: center;
+}
+.progress li svg { width: 100%; height: 100%; }
+.progress li .star-empty { fill: none; stroke: var(--line); stroke-width: 2; }
+.progress li.current .star-empty { stroke: var(--ink); }
+.progress li .star-full { fill: var(--sun); stroke: #c98f00; stroke-width: 1.5; }
+.progress li .star-silver { fill: #c9d3de; stroke: #8d9aaa; stroke-width: 1.5; }
+.progress li.pop svg { animation: pop .5s ease-out; }
+
+.quiz-body {
+  flex: 1;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+  align-content: start;
+}
+.clock-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.clock-holder { width: min(92vw, 40dvh, 460px); aspect-ratio: 1; max-width: 100%; }
+.help-note {
+  margin: 0; font-size: .95rem; color: var(--muted); text-align: center;
+  background: var(--card); border-radius: 999px; padding: 4px 14px;
+}
+.answer-area { display: flex; flex-direction: column; gap: 12px; }
+
+@media (orientation: landscape) and (min-width: 640px) {
+  .quiz-body { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; }
+  .clock-holder { width: min(46vw, 78dvh, 520px); }
+}
+
+.prompt { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.prompt-text {
+  margin: 0; font-size: clamp(1.4rem, 4.6vw, 2rem); font-weight: 800; text-align: center;
+  text-wrap: balance;
+}
+.prompt-text .target { font-family: var(--reading); font-weight: 700; color: var(--minute); display: block; }
+:root[data-theme="dark"] .prompt-text .target { color: var(--focus); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .prompt-text .target { color: var(--focus); } }
+
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice { display: flex; gap: 8px; align-items: stretch; }
+.choice-btn {
+  flex: 1;
+  border: 3px solid var(--line);
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  min-height: 64px;
+  font-family: var(--reading);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 4.4vw, 1.6rem);
+  text-align: left;
+}
+.choice .speak-btn { height: auto; width: 60px; border-radius: var(--radius); }
+.choice-btn.wrong { border-color: var(--oops); background: var(--oops-tint); text-decoration: line-through; opacity: .7; }
+.choice-btn.right { border-color: var(--good); background: var(--good-tint); }
+
+.tiles-wrap { display: flex; flex-direction: column; gap: 12px; }
+.tiles-wrap .row-actions { flex-wrap: nowrap; gap: 8px; }
+.tiles-wrap .row-actions > * { padding-inline: 16px; }
+.build {
+  min-height: 64px;
+  border: 3px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 8px;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  background: var(--card-2);
+}
+.build.wrong { border-color: var(--oops); border-style: solid; }
+.build.right { border-color: var(--good); border-style: solid; background: var(--good-tint); }
+.build-empty { color: var(--muted); padding-inline: 8px; font-size: 1rem; }
+.tiles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.tile {
+  border: 0;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 4px 0 var(--line);
+  padding: 10px 18px;
+  min-height: 56px;
+  font-family: var(--reading);
+  font-weight: 700;
+  font-size: clamp(1.2rem, 4.2vw, 1.5rem);
+}
+.tile:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+.tile.used { visibility: hidden; }
+.build .tile { background: var(--card); box-shadow: 0 3px 0 var(--line); }
+
+.set-wrap { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.set-hint { margin: 0; text-align: center; color: var(--muted); font-size: 1rem; max-width: 36ch; }
+.c-hour { color: var(--hour); }
+.c-minute { color: var(--minute); }
+:root[data-theme="dark"] .c-minute { color: var(--focus); }
+
+.feedback {
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  background: var(--card);
+  text-align: center;
+}
+.feedback.good { background: var(--good-tint); }
+.feedback.oops { background: var(--oops-tint); }
+.feedback-msg { font-size: 1.2rem; font-weight: 700; }
+.feedback-msg .say { font-family: var(--reading); font-size: 1.5rem; display: block; }
+.btn-next { min-width: 200px; }
+
+.shake { animation: shake .4s; }
+@keyframes shake {
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+@keyframes pop {
+  0% { transform: scale(.3) rotate(-30deg); }
+  60% { transform: scale(1.35) rotate(8deg); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- clock ---------- */
+.clock { width: 100%; height: 100%; display: block; overflow: visible; user-select: none; -webkit-user-select: none; }
+.clock.interactive { touch-action: none; cursor: grab; }
+.clock.interactive.dragging { cursor: grabbing; }
+.clock .rim { fill: var(--rim); }
+.clock .dial { fill: var(--face); }
+.clock .q-nach-1 { fill: var(--q-nach-1); }
+.clock .q-nach-2 { fill: var(--q-nach-2); }
+.clock .q-vor-1 { fill: var(--q-vor-1); }
+.clock .q-vor-2 { fill: var(--q-vor-2); }
+.clock .minute-ring-edge { fill: none; stroke: var(--face-muted); stroke-width: .6; }
+.clock .tick { stroke: var(--face-muted); stroke-width: 1; stroke-linecap: round; }
+.clock .tick-5 { stroke: var(--face-ink); stroke-width: 2.2; }
+.clock .minute-num {
+  fill: var(--minute); font-family: var(--display); font-weight: 700; font-size: 9px;
+  text-anchor: middle; dominant-baseline: central;
+}
+.clock .hour-num {
+  fill: var(--face-ink); font-family: var(--display); font-weight: 800; font-size: 19px;
+  text-anchor: middle; dominant-baseline: central;
+}
+.clock[data-help="wenig"] .hour-num { font-size: 20px; }
+.clock .quarter-label {
+  fill: var(--face-ink); opacity: .75;
+  font-family: var(--display); font-weight: 700; font-size: 8px;
+  text-anchor: middle; dominant-baseline: central;
+}
+.clock .hand-line { stroke-linecap: round; }
+.clock .hand-hour .hand-line { stroke: var(--hour); stroke-width: 7.5; }
+.clock .hand-minute .hand-line { stroke: var(--minute); stroke-width: 4.5; }
+.clock[data-help="keine"] .hand-line { stroke: var(--face-ink); }
+.clock .hand-hit { stroke: transparent; stroke-width: 22; stroke-linecap: round; }
+.clock .hand-cap { fill: var(--face-ink); }
+.clock .hand-cap-dot { fill: var(--glow); }
+.clock .hand-glow { stroke: var(--glow); stroke-width: 18; stroke-linecap: round; opacity: 0; }
+.clock .hand-glow.on { opacity: .9; animation: glow 1.2s ease-in-out infinite; }
+.clock .hour-hint { fill: var(--glow); opacity: .85; animation: hint 1.8s ease-out forwards; }
+@keyframes glow { 50% { opacity: .45; } }
+@keyframes hint { 0% { opacity: 0; } 15% { opacity: .9; } 80% { opacity: .9; } 100% { opacity: 0; } }
+
+/* ---------- reward ---------- */
+.reward { display: flex; flex-direction: column; gap: 18px; align-items: center; text-align: center; padding-top: 4vh; }
+.reward-title { margin: 0; font-size: clamp(2.2rem, 8vw, 3.2rem); font-weight: 800; }
+.reward-stars { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 520px; }
+.reward-stars svg { width: clamp(40px, 11vw, 60px); height: auto; }
+.reward-stars .star-full { fill: var(--sun); stroke: #c98f00; stroke-width: 1.5; }
+.reward-stars .star-silver { fill: #c9d3de; stroke: #8d9aaa; stroke-width: 1.5; }
+.reward-stars .star-empty { fill: none; stroke: var(--line); stroke-width: 2; }
+.reward-stars svg { animation: pop .5s ease-out both; }
+.reward-text { margin: 0; font-size: 1.2rem; max-width: 34ch; }
+.suggest-card {
+  background: var(--card); border: 3px solid var(--good); border-radius: var(--radius);
+  padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 480px;
+}
+.suggest-card p { margin: 0; font-weight: 700; }
+
+/* hold-to-confirm (parent gate) */
+.hold-btn {
+  position: relative; overflow: hidden;
+  border: 2px solid var(--ink); background: var(--card);
+  border-radius: 999px; min-height: 52px; padding: 10px 22px; font-weight: 700;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.hold-fill {
+  position: absolute; inset: 0; width: 0; background: var(--good-tint);
+}
+.hold-btn.holding .hold-fill { width: 100%; transition: width 1.6s linear; }
+.hold-label { position: relative; }
+.hold-danger { border-color: var(--oops); }
+.hold-danger .hold-fill { background: var(--oops-tint); }
+
+/* ---------- parent ---------- */
+.parent-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.parent-head h2 { margin: 0; font-size: 1.8rem; }
+.gate { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; max-width: 480px; }
+.gate p { margin: 0; }
+.parent-body { display: flex; flex-direction: column; gap: 16px; font-size: 1rem; }
+.panel { background: var(--card); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.panel h3 { margin: 0; font-size: 1.2rem; }
+.panel-note { margin: 0; color: var(--muted); font-size: .9rem; }
+.stat-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 4px 12px; align-items: center;
+  padding-block: 6px; border-bottom: 1px solid var(--line);
+}
+.stat-row:last-child { border-bottom: 0; }
+.stat-name { font-weight: 700; }
+.stat-nums { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.stat-bar { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--card-2); overflow: hidden; }
+.stat-bar span { display: block; height: 100%; background: var(--oops); border-radius: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--card-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .9rem; }
+.hist { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.hist-wrap { overflow-x: auto; }
+.hist th, .hist td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.hist th { color: var(--muted); font-weight: 700; font-size: .85rem; }
+.setting { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 48px; }
+.setting select { min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: var(--card-2); padding: 4px 8px; max-width: 100%; }
+.switch { width: 28px; height: 28px; accent-color: var(--good); }
+.setting input[type="range"] { accent-color: var(--minute); width: 180px; max-width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .hold-btn.holding .hold-fill { transition-duration: 1.6s !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ Start ============ -->
+  <section id="screen-start" class="screen">
+    <header class="start-head">
+      <h1 class="brand">Uhr lesen</h1>
+      <button type="button" class="parent-link" id="open-parent">Für Eltern</button>
+    </header>
+
+    <div id="suggest-banner" class="suggest-banner" hidden>
+      <p id="banner-text"></p>
+      <div class="row-actions">
+        <button type="button" class="hold-btn" id="banner-yes"><span class="hold-fill"></span><span class="hold-label">Eltern: gedrückt halten</span></button>
+        <button type="button" class="btn-soft" id="banner-no">Noch nicht</button>
+      </div>
+    </div>
+
+    <div class="pick-group">
+      <h2 class="pick-title">Hilfe an der Uhr</h2>
+      <div class="pick-row pick-row-3" id="pick-help">
+        <button type="button" class="pick" data-value="viel"><span class="mini-clock" data-help="viel"></span><span class="pick-label">Viel Hilfe</span></button>
+        <button type="button" class="pick" data-value="wenig"><span class="mini-clock" data-help="wenig"></span><span class="pick-label">Wenig Hilfe</span></button>
+        <button type="button" class="pick" data-value="keine"><span class="mini-clock" data-help="keine"></span><span class="pick-label">Keine Hilfe</span></button>
+      </div>
+    </div>
+
+    <div class="pick-group">
+      <h2 class="pick-title">Stufe</h2>
+      <div class="pick-row pick-row-5" id="pick-stufe">
+        <button type="button" class="pick pick-stufe" data-value="1"><span class="stufe-num">1</span><span class="pick-label">volle Stunden</span><span class="pick-example">drei Uhr</span></button>
+        <button type="button" class="pick pick-stufe" data-value="2"><span class="stufe-num">2</span><span class="pick-label">+ halbe</span><span class="pick-example">halb vier</span></button>
+        <button type="button" class="pick pick-stufe" data-value="3"><span class="stufe-num">3</span><span class="pick-label">+ Viertel</span><span class="pick-example">Viertel nach drei</span></button>
+        <button type="button" class="pick pick-stufe" data-value="4"><span class="stufe-num">4</span><span class="pick-label">+ 5 Minuten</span><span class="pick-example">fünf vor halb vier</span></button>
+        <button type="button" class="pick pick-stufe" data-value="5"><span class="stufe-num">5</span><span class="pick-label">jede Minute</span><span class="pick-example">siebzehn nach drei</span></button>
+      </div>
+    </div>
+
+    <div class="pick-group">
+      <h2 class="pick-title">So antworte ich</h2>
+      <div class="pick-row pick-row-3" id="pick-mode">
+        <button type="button" class="pick pick-mode" data-value="leicht"><span class="dots" aria-hidden="true"><i></i></span><span class="pick-label">Leicht</span><span class="pick-example">Antwort antippen</span></button>
+        <button type="button" class="pick pick-mode" data-value="mittel"><span class="dots" aria-hidden="true"><i></i><i></i></span><span class="pick-label">Mittel</span><span class="pick-example">Wörter legen</span></button>
+        <button type="button" class="pick pick-mode" data-value="schwer"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="pick-label">Schwer</span><span class="pick-example">Zeiger stellen</span></button>
+      </div>
+    </div>
+
+    <button type="button" class="btn-go" id="start-session">Los geht’s!</button>
+  </section>
+
+  <!-- ============ Quiz ============ -->
+  <section id="screen-quiz" class="screen" hidden>
+    <header class="quiz-head">
+      <button type="button" class="icon-btn" id="quit-session" aria-label="Beenden">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <ol class="progress" id="progress" aria-label="Fortschritt"></ol>
+    </header>
+
+    <div class="quiz-body">
+      <div class="clock-wrap">
+        <div id="clock" class="clock-holder"></div>
+        <p class="help-note" id="help-note" hidden></p>
+      </div>
+
+      <div class="answer-area">
+        <div class="prompt">
+          <p class="prompt-text" id="prompt-text">Wie spät ist es?</p>
+          <button type="button" class="speak-btn" id="prompt-speak" aria-label="Vorlesen"></button>
+        </div>
+
+        <!-- Leicht -->
+        <div class="choices" id="choices" hidden></div>
+
+        <!-- Mittel -->
+        <div class="tiles-wrap" id="tiles-wrap" hidden>
+          <div class="build" id="build" aria-label="Deine Antwort"><span class="build-empty">Tippe die Wörter an</span></div>
+          <div class="tiles" id="tiles"></div>
+          <div class="row-actions">
+            <button type="button" class="btn-soft" id="build-speak">Anhören</button>
+            <button type="button" class="btn-soft" id="build-clear">Löschen</button>
+            <button type="button" class="btn-check" id="build-check" disabled>Fertig</button>
+          </div>
+        </div>
+
+        <!-- Schwer -->
+        <div class="set-wrap" id="set-wrap" hidden>
+          <p class="set-hint">Dreh die Zeiger. Der <b class="c-hour">kleine</b> zeigt die Stunde, der <b class="c-minute">große</b> die Minuten.</p>
+          <button type="button" class="btn-check" id="set-check">Fertig</button>
+        </div>
+
+        <div class="feedback" id="feedback" hidden>
+          <div class="feedback-msg" id="feedback-msg"></div>
+          <button type="button" class="btn-go btn-next" id="next-question" hidden>Weiter</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Reward ============ -->
+  <section id="screen-reward" class="screen" hidden>
+    <div class="reward">
+      <h2 class="reward-title" id="reward-title">Geschafft!</h2>
+      <div class="reward-stars" id="reward-stars"></div>
+      <p class="reward-text" id="reward-text"></p>
+
+      <div class="suggest-card" id="suggest-card" hidden>
+        <p id="suggest-text"></p>
+        <div class="row-actions">
+          <button type="button" class="hold-btn" id="suggest-yes"><span class="hold-fill"></span><span class="hold-label">Eltern: gedrückt halten</span></button>
+          <button type="button" class="btn-soft" id="suggest-no">Noch nicht</button>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button type="button" class="btn-go" id="again">Nochmal</button>
+        <button type="button" class="btn-soft" id="to-start">Zum Start</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Parent ============ -->
+  <section id="screen-parent" class="screen" hidden>
+    <header class="parent-head">
+      <h2>Für Eltern</h2>
+      <button type="button" class="btn-soft" id="parent-close">Zurück</button>
+    </header>
+
+    <div class="gate" id="parent-gate">
+      <p>Dieser Bereich ist für Erwachsene. Halte den Knopf gedrückt, bis er voll ist.</p>
+      <button type="button" class="hold-btn" id="parent-unlock"><span class="hold-fill"></span><span class="hold-label">Gedrückt halten</span></button>
+    </div>
+
+    <div class="parent-body" id="parent-body" hidden>
+      <div class="panel">
+        <h3>Wo passieren die meisten Fehler?</h3>
+        <p class="panel-note">Zählt, wie oft eine Zeitart beim ersten Versuch falsch gelesen wurde.</p>
+        <div id="stats-table"></div>
+        <div id="error-types"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Letzte Runden</h3>
+        <div id="history"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Einstellungen</h3>
+        <div class="setting">
+          <label for="set-region">Regionale Formen</label>
+          <select id="set-region">
+            <option value="standard">Aus (Viertel nach / Viertel vor)</option>
+            <option value="viertel">Viertel vier, drei viertel vier</option>
+            <option value="ch">Schweiz: „ab“ statt „nach“</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="set-speech">Vorlesen</label>
+          <input type="checkbox" id="set-speech" class="switch">
+        </div>
+        <div class="setting">
+          <label for="set-rate">Sprechtempo</label>
+          <input type="range" id="set-rate" min="0.6" max="1.2" step="0.1">
+        </div>
+        <div class="setting">
+          <label for="set-sound">Töne</label>
+          <input type="checkbox" id="set-sound" class="switch">
+        </div>
+        <p class="panel-note" id="voice-note"></p>
+        <div class="setting">
+          <span>Fortschritt löschen</span>
+          <button type="button" class="hold-btn hold-danger" id="reset-progress"><span class="hold-fill"></span><span class="hold-label">Gedrückt halten</span></button>
+        </div>
+      </div>
+      <p class="panel-note">Alle Daten bleiben auf diesem Gerät. Keine Werbung, kein Konto, keine Verbindung ins Internet nötig.</p>
+    </div>
+  </section>
+
+</div>
+<script>
+/*
+ * Uhr lesen – Uhrzeit -> gesprochene deutsche Uhrzeit.
+ *
+ * Pure functions only (no DOM), so the same file runs in the browser
+ * (global `UhrZeit`) and in Node for the unit tests (module.exports).
+ *
+ * Region options:
+ *   'standard' – "Viertel nach drei", "Viertel vor vier"
+ *   'viertel'  – "Viertel vier" (3:15), "drei viertel vier" (3:45)
+ *   'ch'       – Swiss "ab" instead of "nach" ("Viertel ab drei")
+ * Standard forms are always accepted as answers, whatever the region.
+ */
+(function (root) {
+  'use strict';
+
+  // Index = hour on the clock face (0 and 12 both "zwölf").
+  var HOUR_WORDS = ['zwölf', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs',
+    'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf'];
+
+  // Index = number of minutes (1–29).
+  var MINUTE_WORDS = [null, 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs',
+    'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf', 'dreizehn', 'vierzehn',
+    'fünfzehn', 'sechzehn', 'siebzehn', 'achtzehn', 'neunzehn', 'zwanzig',
+    'einundzwanzig', 'zweiundzwanzig', 'dreiundzwanzig', 'vierundzwanzig',
+    'fünfundzwanzig', 'sechsundzwanzig', 'siebenundzwanzig',
+    'achtundzwanzig', 'neunundzwanzig'];
+
+  /** Clock hour 1–12 for any integer hour (0, 12, 24 -> 12; 13 -> 1). */
+  function hour12(hour) {
+    var h = ((Math.round(hour) % 12) + 12) % 12;
+    return h === 0 ? 12 : h;
+  }
+
+  function nextHour12(hour) {
+    return hour12(hour12(hour) + 1);
+  }
+
+  /** "eine Minute" for 1, otherwise the plain number word. */
+  function minuteCount(n) {
+    return n === 1 ? 'eine Minute' : MINUTE_WORDS[n];
+  }
+
+  /** Normalise user/phrase text for comparison. */
+  function normalize(text) {
+    return String(text).toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function uniq(list) {
+    var seen = {};
+    return list.filter(function (item) {
+      var key = normalize(item);
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+
+  /**
+   * All correct standard-German phrases for a time. First entry is the
+   * canonical (taught) form, the rest are accepted alternatives.
+   */
+  function standardPhrases(hour, minute) {
+    var H = HOUR_WORDS[hour12(hour)];
+    var N = HOUR_WORDS[nextHour12(hour)];
+    var m = minute;
+
+    if (m === 0) return [(hour12(hour) === 1 ? 'ein' : H) + ' Uhr'];
+    if (m === 15) return ['Viertel nach ' + H, 'fünfzehn nach ' + H];
+    if (m === 30) return ['halb ' + N];
+    if (m === 45) return ['Viertel vor ' + N, 'fünfzehn vor ' + N];
+    if (m === 25) return ['fünf vor halb ' + N, 'fünfundzwanzig nach ' + H];
+    if (m === 35) return ['fünf nach halb ' + N, 'fünfundzwanzig vor ' + N];
+    if (m === 20) return ['zwanzig nach ' + H, 'zehn vor halb ' + N];
+    if (m === 40) return ['zwanzig vor ' + N, 'zehn nach halb ' + N];
+    if (m === 1) return ['eine Minute nach ' + H, 'eins nach ' + H];
+    if (m === 59) return ['eine Minute vor ' + N, 'eins vor ' + N];
+    if (m < 30) return [minuteCount(m) + ' nach ' + H];
+    return [minuteCount(60 - m) + ' vor ' + N];
+  }
+
+  /**
+   * Phrases for a time.
+   * @param {number} hour   any integer hour (0–23 fine)
+   * @param {number} minute 0–59
+   * @param {{region?: 'standard'|'viertel'|'ch'}} [opts]
+   * @returns {{text: string, accepted: string[], category: string}}
+   */
+  function timeToPhrases(hour, minute, opts) {
+    if (!(minute >= 0 && minute <= 59 && minute === Math.floor(minute))) {
+      throw new RangeError('minute must be an integer 0–59, got ' + minute);
+    }
+    var region = (opts && opts.region) || 'standard';
+    var std = standardPhrases(hour, minute);
+    var N = HOUR_WORDS[nextHour12(hour)];
+    var regional = [];
+    var extra = [];
+
+    if (region === 'viertel') {
+      if (minute === 15) regional = ['Viertel ' + N];
+      if (minute === 45) regional = ['drei viertel ' + N, 'dreiviertel ' + N];
+    } else if (region === 'ch') {
+      var hasNach = function (p) { return / nach /.test(' ' + p + ' '); };
+      var ab = std.filter(hasNach).map(function (p) {
+        return (' ' + p).replace(' nach ', ' ab ').trim();
+      });
+      // Swiss form first when the canonical phrase uses "nach".
+      if (hasNach(std[0])) regional = ab; else extra = ab;
+    }
+
+    var accepted = uniq(regional.concat(std, extra));
+    return { text: accepted[0], accepted: accepted, category: categoryOf(minute) };
+  }
+
+  /** Canonical phrase only. */
+  function timeToPhrase(hour, minute, opts) {
+    return timeToPhrases(hour, minute, opts).text;
+  }
+
+  /** Is `answer` a correct way to say hour:minute? */
+  function isCorrect(answer, hour, minute, opts) {
+    var a = normalize(answer);
+    return timeToPhrases(hour, minute, opts).accepted.some(function (p) {
+      return normalize(p) === a;
+    });
+  }
+
+  /** Time type, used for the parent statistics. */
+  function categoryOf(minute) {
+    if (minute === 0) return 'voll';
+    if (minute === 30) return 'halb';
+    if (minute === 15) return 'viertelNach';
+    if (minute === 45) return 'viertelVor';
+    if (minute === 25 || minute === 35) return 'umHalb';
+    if (minute % 5 === 0) return minute < 30 ? 'fuenfNach' : 'fuenfVor';
+    return minute < 30 ? 'minuteNach' : 'minuteVor';
+  }
+
+  var CATEGORY_LABELS = {
+    voll: 'Volle Stunden (drei Uhr)',
+    halb: 'Halbe Stunden (halb vier)',
+    viertelNach: 'Viertel nach',
+    viertelVor: 'Viertel vor',
+    fuenfNach: '„nach“-Zeiten (zehn nach drei)',
+    fuenfVor: '„vor“-Zeiten (zehn vor vier)',
+    umHalb: 'Um halb herum (fünf vor halb vier)',
+    minuteNach: 'Einzelne Minuten nach',
+    minuteVor: 'Einzelne Minuten vor'
+  };
+
+  /**
+   * Reverse lookup: which time (hour 1–12, minute) does a phrase mean?
+   * Brute force over all 720 times, so it always agrees with timeToPhrases.
+   * Returns null if the phrase is not a valid time.
+   */
+  function phraseToTime(phrase, opts) {
+    var target = normalize(phrase);
+    for (var h = 1; h <= 12; h++) {
+      for (var m = 0; m < 60; m++) {
+        var accepted = timeToPhrases(h, m, opts).accepted;
+        for (var i = 0; i < accepted.length; i++) {
+          if (normalize(accepted[i]) === target) return { hour: h, minute: m };
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Minutes allowed at each Stufe (1–5). */
+  var STUFE_MINUTES = {
+    1: [0],
+    2: [0, 30],
+    3: [0, 15, 30, 45],
+    4: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55],
+    5: Array.apply(null, Array(60)).map(function (_, i) { return i; })
+  };
+
+  /** Minute snap step for dragging hands (Schwer mode). */
+  var STUFE_STEP = { 1: 30, 2: 30, 3: 15, 4: 5, 5: 1 };
+
+  var api = {
+    HOUR_WORDS: HOUR_WORDS,
+    MINUTE_WORDS: MINUTE_WORDS,
+    CATEGORY_LABELS: CATEGORY_LABELS,
+    STUFE_MINUTES: STUFE_MINUTES,
+    STUFE_STEP: STUFE_STEP,
+    hour12: hour12,
+    nextHour12: nextHour12,
+    normalize: normalize,
+    timeToPhrases: timeToPhrases,
+    timeToPhrase: timeToPhrase,
+    isCorrect: isCorrect,
+    categoryOf: categoryOf,
+    phraseToTime: phraseToTime
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.UhrZeit = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/*
+ * Uhr lesen – SVG analog clock.
+ *
+ * UhrClock.create(container, { onChange, onFaceTap })
+ *   .set({ hour, minute })                 hands
+ *   .setHelp('viel' | 'wenig' | 'keine')   face detail
+ *   .setHighlight({ hour, minute })        glow on misread hand(s)
+ *   .setInteractive(bool, step)            drag hands (Schwer mode)
+ *   .animateTo(hour, minute)               smooth move (show answer)
+ *   .showHourHint()                        highlight passed hour number
+ */
+(function (root) {
+  'use strict';
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var QUARTER_LABELS = [
+    { angle: 90, lines: ['Viertel', 'nach'] },
+    { angle: 180, lines: ['halb'] },
+    { angle: 270, lines: ['Viertel', 'vor'] }
+  ];
+
+  function el(name, attrs, parent) {
+    var node = document.createElementNS(NS, name);
+    for (var k in attrs) node.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  function polar(angleDeg, r) {
+    var a = (angleDeg - 90) * Math.PI / 180;
+    return { x: +(r * Math.cos(a)).toFixed(2), y: +(r * Math.sin(a)).toFixed(2) };
+  }
+
+  function wedge(fromDeg, toDeg, r) {
+    var a = polar(fromDeg, r), b = polar(toDeg, r);
+    return 'M0 0 L' + a.x + ' ' + a.y + ' A' + r + ' ' + r + ' 0 0 1 ' + b.x + ' ' + b.y + ' Z';
+  }
+
+  function mod(n, m) { return ((n % m) + m) % m; }
+
+  function create(container, opts) {
+    opts = opts || {};
+    var state = { hour: 12, minute: 0, help: 'viel', interactive: false, step: 5 };
+    var drag = null;
+    var anim = null;
+
+    var svg = el('svg', {
+      viewBox: '-110 -110 220 220', class: 'clock', role: 'img',
+      'aria-label': 'Analoge Uhr'
+    });
+    var face = el('g', { class: 'clock-face' }, svg);
+    var hint = el('g', { class: 'clock-hint' }, svg);
+    var hands = el('g', { class: 'clock-hands' }, svg);
+
+    var hourGlow = el('line', { x1: 0, y1: 8, x2: 0, y2: -50, class: 'hand-glow' }, hands);
+    var minuteGlow = el('line', { x1: 0, y1: 10, x2: 0, y2: -82, class: 'hand-glow' }, hands);
+    var hourHand = el('g', { class: 'hand hand-hour' }, hands);
+    el('line', { x1: 0, y1: 10, x2: 0, y2: -50, class: 'hand-hit' }, hourHand);
+    el('line', { x1: 0, y1: 8, x2: 0, y2: -48, class: 'hand-line' }, hourHand);
+    var minuteHand = el('g', { class: 'hand hand-minute' }, hands);
+    el('line', { x1: 0, y1: 12, x2: 0, y2: -84, class: 'hand-hit' }, minuteHand);
+    el('line', { x1: 0, y1: 10, x2: 0, y2: -82, class: 'hand-line' }, minuteHand);
+    el('circle', { r: 6, class: 'hand-cap' }, hands);
+    el('circle', { r: 2, class: 'hand-cap-dot' }, hands);
+
+    container.appendChild(svg);
+
+    function drawFace() {
+      face.textContent = '';
+      svg.setAttribute('data-help', state.help);
+      el('circle', { r: 104, class: 'rim' }, face);
+      el('circle', { r: 100, class: 'dial' }, face);
+
+      if (state.help === 'viel') {
+        // Right half "nach" (green), left half "vor" (orange); quarters alternate.
+        el('path', { d: wedge(0, 90, 81), class: 'q q-nach-1' }, face);
+        el('path', { d: wedge(90, 180, 81), class: 'q q-nach-2' }, face);
+        el('path', { d: wedge(180, 270, 81), class: 'q q-vor-2' }, face);
+        el('path', { d: wedge(270, 360, 81), class: 'q q-vor-1' }, face);
+        el('circle', { r: 81, class: 'minute-ring-edge' }, face);
+        for (var i = 0; i < 60; i++) {
+          var p1 = polar(i * 6, 81), p2 = polar(i * 6, i % 5 ? 84 : 86);
+          el('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, class: i % 5 ? 'tick' : 'tick tick-5' }, face);
+        }
+        for (var m = 0; m < 60; m += 5) {
+          var mp = polar(m * 6, 93);
+          var mt = el('text', { x: mp.x, y: mp.y, class: 'minute-num' }, face);
+          mt.textContent = String(m);
+        }
+        QUARTER_LABELS.forEach(function (q) {
+          var p = polar(q.angle, 43);
+          var t = el('text', { x: p.x, y: p.y - (q.lines.length - 1) * 4.2, class: 'quarter-label' }, face);
+          q.lines.forEach(function (line, idx) {
+            var span = el('tspan', { x: p.x, dy: idx ? 8.4 : 0 }, t);
+            span.textContent = line;
+          });
+        });
+      } else {
+        for (var j = 0; j < 60; j++) {
+          var big = j % 5 === 0;
+          var a = polar(j * 6, big ? 86 : 91), b = polar(j * 6, 97);
+          el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: big ? 'tick tick-5' : 'tick' }, face);
+        }
+      }
+
+      if (state.help !== 'keine') {
+        var r = state.help === 'viel' ? 67 : 72;
+        for (var h = 1; h <= 12; h++) {
+          var hp = polar(h * 30, r);
+          var ht = el('text', { x: hp.x, y: hp.y, class: 'hour-num', 'data-hour': h }, face);
+          ht.textContent = String(h);
+        }
+      }
+    }
+
+    function place(hour, minute) {
+      var minuteAngle = minute * 6;
+      var hourAngle = mod(hour, 12) * 30 + minute * 0.5;
+      hourHand.setAttribute('transform', 'rotate(' + hourAngle + ')');
+      hourGlow.setAttribute('transform', 'rotate(' + hourAngle + ')');
+      minuteHand.setAttribute('transform', 'rotate(' + minuteAngle + ')');
+      minuteGlow.setAttribute('transform', 'rotate(' + minuteAngle + ')');
+    }
+
+    function render() {
+      place(state.hour, state.minute);
+      var h12 = mod(state.hour, 12) || 12;
+      svg.setAttribute('aria-label', 'Analoge Uhr, kleiner Zeiger bei ' + h12 +
+        ', großer Zeiger bei Minute ' + state.minute);
+    }
+
+    function set(t) {
+      stopAnim();
+      state.hour = mod(t.hour, 12) || 12;
+      state.minute = t.minute;
+      clearHint();
+      render();
+    }
+
+    function setHelp(level) {
+      if (level === state.help && face.childNodes.length) return;
+      state.help = level;
+      drawFace();
+    }
+
+    function setHighlight(h) {
+      h = h || {};
+      hourGlow.classList.toggle('on', !!h.hour);
+      minuteGlow.classList.toggle('on', !!h.minute);
+    }
+
+    function clearHint() { hint.textContent = ''; }
+
+    function showHourHint() {
+      clearHint();
+      var passed = mod(state.hour, 12) || 12;
+      var r = state.help === 'viel' ? 67 : 72;
+      var p = polar(passed * 30, r);
+      el('circle', { cx: p.x, cy: p.y, r: 12, class: 'hour-hint' }, hint);
+    }
+
+    // ---- dragging (Schwer) ----
+
+    function pointerAngle(evt) {
+      var box = svg.getBoundingClientRect();
+      var dx = evt.clientX - (box.left + box.width / 2);
+      var dy = evt.clientY - (box.top + box.height / 2);
+      var dist = Math.sqrt(dx * dx + dy * dy) / (box.width / 2) * 110;
+      return { angle: mod(Math.atan2(dx, -dy) * 180 / Math.PI, 360), dist: dist };
+    }
+
+    function angleGap(a, b) {
+      var d = Math.abs(a - b) % 360;
+      return d > 180 ? 360 - d : d;
+    }
+
+    function onDown(evt) {
+      if (!state.interactive) {
+        if (state.help === 'viel' && opts.onFaceTap !== false) {
+          showHourHint();
+          if (opts.onFaceTap) opts.onFaceTap(mod(state.hour, 12) || 12);
+        }
+        return;
+      }
+      evt.preventDefault();
+      var p = pointerAngle(evt);
+      var hourAngle = mod(state.hour, 12) * 30 + state.minute * 0.5;
+      var minuteAngle = state.minute * 6;
+      var target;
+      if (evt.target.closest && evt.target.closest('.hand-hour')) target = 'hour';
+      else if (evt.target.closest && evt.target.closest('.hand-minute')) target = 'minute';
+      else {
+        var gh = angleGap(p.angle, hourAngle), gm = angleGap(p.angle, minuteAngle);
+        if (Math.abs(gh - gm) < 20) target = p.dist < 55 ? 'hour' : 'minute';
+        else target = gh < gm ? 'hour' : 'minute';
+      }
+      drag = { target: target, turns: mod(state.hour, 12), raw: state.minute };
+      svg.classList.add('dragging');
+      svg.setPointerCapture && svg.setPointerCapture(evt.pointerId);
+      onMove(evt);
+    }
+
+    function onMove(evt) {
+      if (!drag) return;
+      evt.preventDefault();
+      var p = pointerAngle(evt);
+      if (drag.target === 'minute') {
+        var raw = p.angle / 6;
+        if (drag.raw > 45 && raw < 15) drag.turns += 1;
+        else if (drag.raw < 15 && raw > 45) drag.turns -= 1;
+        drag.raw = raw;
+        var total = Math.round((drag.turns * 60 + raw) / state.step) * state.step;
+        state.hour = mod(Math.floor(total / 60), 12) || 12;
+        state.minute = mod(total, 60);
+      } else {
+        var h = Math.round((p.angle - state.minute * 0.5) / 30);
+        state.hour = mod(h, 12) || 12;
+        drag.turns = mod(state.hour, 12);
+        drag.raw = state.minute;
+      }
+      render();
+      if (opts.onChange) opts.onChange({ hour: state.hour, minute: state.minute });
+    }
+
+    function onUp() {
+      if (!drag) return;
+      drag = null;
+      svg.classList.remove('dragging');
+    }
+
+    function onKey(evt) {
+      if (!state.interactive) return;
+      var dm = 0, dh = 0;
+      if (evt.key === 'ArrowUp' || evt.key === 'ArrowRight') dm = state.step;
+      else if (evt.key === 'ArrowDown' || evt.key === 'ArrowLeft') dm = -state.step;
+      else if (evt.key === 'PageUp' || evt.key === '+') dh = 1;
+      else if (evt.key === 'PageDown' || evt.key === '-') dh = -1;
+      else return;
+      evt.preventDefault();
+      var total = mod((mod(state.hour, 12) + dh) * 60 + state.minute + dm, 720);
+      state.hour = Math.floor(total / 60) || 12;
+      state.minute = total % 60;
+      render();
+      if (opts.onChange) opts.onChange({ hour: state.hour, minute: state.minute });
+    }
+
+    svg.addEventListener('pointerdown', onDown);
+    svg.addEventListener('pointermove', onMove);
+    svg.addEventListener('pointerup', onUp);
+    svg.addEventListener('pointercancel', onUp);
+    svg.addEventListener('keydown', onKey);
+
+    function setInteractive(on, step) {
+      state.interactive = !!on;
+      if (step) state.step = step;
+      svg.classList.toggle('interactive', state.interactive);
+      if (state.interactive) {
+        svg.setAttribute('tabindex', '0');
+        svg.setAttribute('role', 'slider');
+      } else {
+        svg.removeAttribute('tabindex');
+        svg.setAttribute('role', 'img');
+      }
+    }
+
+    function stopAnim() {
+      if (anim) cancelAnimationFrame(anim);
+      anim = null;
+    }
+
+    function animateTo(hour, minute, done) {
+      stopAnim();
+      var from = mod(state.hour, 12) * 60 + state.minute;
+      var to = mod(hour, 12) * 60 + minute;
+      var diff = mod(to - from + 360, 720) - 360; // shortest way round
+      var reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var dur = reduce ? 0 : Math.min(1400, 300 + Math.abs(diff) * 3);
+      var start = null;
+      function step(ts) {
+        if (start === null) start = ts;
+        var t = dur ? Math.min(1, (ts - start) / dur) : 1;
+        var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        var cur = from + diff * e;
+        place(Math.floor(cur / 60), mod(cur, 60));
+        if (t < 1) anim = requestAnimationFrame(step);
+        else {
+          anim = null;
+          state.hour = mod(hour, 12) || 12;
+          state.minute = minute;
+          render();
+          if (done) done();
+        }
+      }
+      anim = requestAnimationFrame(step);
+    }
+
+    drawFace();
+    render();
+
+    return {
+      el: svg,
+      set: set,
+      get: function () { return { hour: state.hour, minute: state.minute }; },
+      setHelp: setHelp,
+      setHighlight: setHighlight,
+      setInteractive: setInteractive,
+      animateTo: animateTo,
+      showHourHint: showHourHint,
+      clearHint: clearHint
+    };
+  }
+
+  root.UhrClock = { create: create };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* Uhr lesen – app logic (screens, sessions, audio, local progress). */
+(function () {
+  'use strict';
+
+  var Z = window.UhrZeit;
+  var QUESTIONS = 10;
+  var PROMOTE_SCORE = 8;
+  var HELP_ORDER = ['keine', 'wenig', 'viel'];
+  var STORE_KEY = 'uhr-lesen-v1';
+  var STUFE_NAMES = { 1: 'volle Stunden', 2: 'halbe Stunden', 3: 'Viertelstunden', 4: '5-Minuten-Schritte', 5: 'jede Minute' };
+
+  // ------------------------------------------------------------------
+  // Storage (localStorage only, fails soft)
+  // ------------------------------------------------------------------
+
+  function defaults() {
+    return {
+      settings: { help: 'viel', stufe: 1, mode: 'leicht', region: 'standard', speech: true, sound: true, rate: 0.9 },
+      stats: {},
+      errorTypes: { hour: 0, minute: 0, direction: 0, other: 0 },
+      history: [],
+      suggestDismissedAt: -1
+    };
+  }
+
+  function load() {
+    var data = defaults();
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var saved = JSON.parse(raw);
+        for (var k in saved) data[k] = saved[k];
+        data.settings = Object.assign(defaults().settings, saved.settings || {});
+      }
+    } catch (e) { /* private mode or blocked storage: start fresh */ }
+    return data;
+  }
+
+  var store = load();
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* ignore */ }
+  }
+
+  function phraseOpts() { return { region: store.settings.region }; }
+
+  // ------------------------------------------------------------------
+  // Helpers
+  // ------------------------------------------------------------------
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function rand(n) { return Math.floor(Math.random() * n); }
+  function pick(list) { return list[rand(list.length)]; }
+  function shuffle(list) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = rand(i + 1), t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function h12(h) { return Z.hour12(h); }
+  function sameTime(a, b) { return a && b && h12(a.hour) === h12(b.hour) && a.minute === b.minute; }
+
+  var SPEAKER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
+  var STAR_PATH = 'M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z';
+
+  function starSvg(kind) {
+    var cls = kind === 'first' || kind === 'second' ? 'star-full' : kind === 'later' ? 'star-silver' : 'star-empty';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="' + cls + '" d="' + STAR_PATH + '"/></svg>';
+  }
+
+  function show(screenId) {
+    ['screen-start', 'screen-quiz', 'screen-reward', 'screen-parent'].forEach(function (id) {
+      $(id).hidden = id !== screenId;
+    });
+    window.scrollTo(0, 0);
+  }
+
+  // ------------------------------------------------------------------
+  // Speech (Web Speech API, de-DE)
+  // ------------------------------------------------------------------
+
+  var voice = null;
+  var synth = window.speechSynthesis;
+
+  function pickVoice() {
+    if (!synth) return;
+    var voices = synth.getVoices() || [];
+    var german = voices.filter(function (v) { return /^de([-_]|$)/i.test(v.lang); });
+    voice = german.filter(function (v) { return /de[-_]DE/i.test(v.lang); })[0] || german[0] || null;
+    updateVoiceNote();
+  }
+  if (synth) {
+    pickVoice();
+    if (synth.addEventListener) synth.addEventListener('voiceschanged', pickVoice);
+  }
+
+  function speak(text, onEnd) {
+    if (!synth || !store.settings.speech || !text) { if (onEnd) onEnd(); return; }
+    try {
+      synth.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'de-DE';
+      if (voice) u.voice = voice;
+      u.rate = store.settings.rate;
+      if (onEnd) u.onend = onEnd;
+      synth.speak(u);
+    } catch (e) { if (onEnd) onEnd(); }
+  }
+
+  function updateVoiceNote() {
+    var note = $('voice-note');
+    if (!note) return;
+    if (!synth) note.textContent = 'Dieser Browser kann nicht vorlesen.';
+    else if (!voice) note.textContent = 'Keine deutsche Stimme gefunden. Unter Android/iOS kann man sie in den Systemeinstellungen (Sprachausgabe) laden.';
+    else note.textContent = 'Stimme: ' + voice.name;
+  }
+
+  // ------------------------------------------------------------------
+  // Sounds (Web Audio, no files)
+  // ------------------------------------------------------------------
+
+  var audioCtx = null;
+  function tone(freq, start, dur, type, gain) {
+    var ctx = audioCtx;
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'triangle';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, ctx.currentTime + start);
+    g.gain.linearRampToValueAtTime(gain || 0.18, ctx.currentTime + start + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(ctx.currentTime + start);
+    o.stop(ctx.currentTime + start + dur + 0.05);
+  }
+  function sound(kind) {
+    if (!store.settings.sound) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (kind === 'happy') [523, 659, 784, 1047].forEach(function (f, i) { tone(f, i * 0.09, 0.28); });
+      else if (kind === 'oops') { tone(392, 0, 0.22, 'sine', 0.12); tone(330, 0.16, 0.3, 'sine', 0.12); }
+      else if (kind === 'fanfare') [523, 659, 784, 659, 784, 1047].forEach(function (f, i) { tone(f, i * 0.12, 0.35); });
+      else if (kind === 'tap') tone(880, 0, 0.06, 'sine', 0.06);
+    } catch (e) { /* no audio */ }
+  }
+
+  // ------------------------------------------------------------------
+  // Start screen
+  // ------------------------------------------------------------------
+
+  function bindPicker(groupId, key, parse) {
+    var group = $(groupId);
+    var buttons = Array.prototype.slice.call(group.querySelectorAll('.pick'));
+    function refresh() {
+      buttons.forEach(function (b) {
+        b.setAttribute('aria-pressed', String(parse(b.dataset.value) === store.settings[key]));
+      });
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        store.settings[key] = parse(b.dataset.value);
+        save();
+        refresh();
+        sound('tap');
+      });
+    });
+    refresh();
+    return refresh;
+  }
+
+  var id = function (v) { return v; };
+  var refreshPickers = [
+    bindPicker('pick-help', 'help', id),
+    bindPicker('pick-stufe', 'stufe', Number),
+    bindPicker('pick-mode', 'mode', id)
+  ];
+
+  // Small preview clocks on the help buttons.
+  Array.prototype.forEach.call(document.querySelectorAll('.mini-clock'), function (holder) {
+    var c = UhrClock.create(holder, { onFaceTap: false });
+    c.setHelp(holder.dataset.help);
+    c.set({ hour: 3, minute: 15 });
+    c.el.setAttribute('aria-hidden', 'true');
+  });
+
+  function refreshStart() {
+    refreshPickers.forEach(function (f) { f(); });
+    var s = suggestion();
+    $('suggest-banner').hidden = !s;
+    if (s) $('banner-text').textContent = 'Zweimal hintereinander ' + PROMOTE_SCORE + ' von 10! Weiter zu Stufe ' + s + ' (' + STUFE_NAMES[s] + ')?';
+  }
+
+  // ------------------------------------------------------------------
+  // Session
+  // ------------------------------------------------------------------
+
+  var clock = UhrClock.create($('clock'), {
+    onFaceTap: function (hour) { sound('tap'); },
+    onChange: function () { if (session && session.mode === 'schwer') clearWrongMarks(); }
+  });
+
+  var session = null;
+
+  function newMinutesFor(stufe) {
+    var all = Z.STUFE_MINUTES[stufe];
+    if (stufe === 1) return all;
+    var prev = Z.STUFE_MINUTES[stufe - 1];
+    return all.filter(function (m) { return prev.indexOf(m) === -1; });
+  }
+
+  function makeTimes(stufe) {
+    var all = Z.STUFE_MINUTES[stufe];
+    var fresh = newMinutesFor(stufe);
+    var times = [];
+    var guard = 0;
+    while (times.length < QUESTIONS && guard++ < 500) {
+      // Half of the questions practise what is new at this Stufe.
+      var minute = times.length % 2 === 0 ? pick(fresh) : pick(all);
+      var t = { hour: 1 + rand(12), minute: minute };
+      var dup = times.some(function (o) { return sameTime(o, t); });
+      if (dup && guard < 400) continue;
+      times.push(t);
+    }
+    return shuffle(times);
+  }
+
+  function startSession() {
+    var s = store.settings;
+    session = {
+      stufe: s.stufe, mode: s.mode, help: s.help,
+      queue: makeTimes(s.stufe).map(function (t, i) { return { hour: t.hour, minute: t.minute, slot: i, reask: false }; }),
+      results: new Array(QUESTIONS).fill(null),
+      pos: -1,
+      item: null,
+      attempt: 0,
+      done: false,
+      startedAt: Date.now()
+    };
+    show('screen-quiz');
+    nextQuestion();
+  }
+
+  function renderProgress(popSlot) {
+    var ol = $('progress');
+    ol.innerHTML = '';
+    for (var i = 0; i < QUESTIONS; i++) {
+      var li = document.createElement('li');
+      li.innerHTML = starSvg(session.results[i]);
+      if (session.item && session.item.slot === i && !session.done) li.classList.add('current');
+      if (popSlot === i) li.classList.add('pop');
+      ol.appendChild(li);
+    }
+    var solved = session.results.filter(Boolean).length;
+    ol.setAttribute('aria-label', 'Fortschritt: ' + solved + ' von ' + QUESTIONS + ' Sternen');
+  }
+
+  function helpUp(level) {
+    var i = HELP_ORDER.indexOf(level);
+    return HELP_ORDER[Math.min(HELP_ORDER.length - 1, i + 1)];
+  }
+
+  function nextQuestion() {
+    session.pos += 1;
+    if (session.pos >= session.queue.length) return finishSession();
+    var item = session.queue[session.pos];
+    session.item = item;
+    session.attempt = 0;
+    session.done = false;
+    session.phrases = Z.timeToPhrases(item.hour, item.minute, phraseOpts());
+
+    clock.setHelp(session.help);
+    clock.setHighlight(null);
+    clock.clearHint();
+    $('help-note').hidden = true;
+    $('feedback').hidden = true;
+    $('next-question').hidden = true;
+    $('choices').hidden = true;
+    $('tiles-wrap').hidden = true;
+    $('set-wrap').hidden = true;
+    renderProgress();
+
+    var prompt = $('prompt-text');
+    if (session.mode === 'schwer') {
+      var start;
+      do { start = { hour: 1 + rand(12), minute: pick(Z.STUFE_MINUTES[Math.max(session.stufe, 2)].filter(function (m) { return m % Z.STUFE_STEP[session.stufe] === 0; })) }; }
+      while (sameTime(start, item));
+      clock.set(start);
+      clock.setInteractive(true, Z.STUFE_STEP[session.stufe]);
+      prompt.innerHTML = 'Stell die Uhr auf:<span class="target"></span>';
+      prompt.querySelector('.target').textContent = session.phrases.text;
+      $('set-wrap').hidden = false;
+      $('set-check').disabled = false;
+      speak('Stell die Uhr auf ' + session.phrases.text);
+    } else {
+      clock.set(item);
+      clock.setInteractive(false);
+      prompt.textContent = item.reask ? 'Noch einmal: Wie spät ist es?' : 'Wie spät ist es?';
+      if (session.mode === 'leicht') renderChoices();
+      else renderTiles();
+    }
+  }
+
+  function promptSpeech() {
+    if (!session) return;
+    if (session.mode === 'schwer') speak('Stell die Uhr auf ' + session.phrases.text);
+    else if (session.mode === 'mittel') speak(buildText() || 'Wie spät ist es?');
+    else speak('Wie spät ist es?');
+  }
+
+  // ---------- Leicht: 3 choices ----------
+
+  /** Near-miss wrong answers: wrong hour, nach/vor swapped, halb confusion. */
+  function distractors(item) {
+    var h = h12(item.hour), m = item.minute;
+    var cands = [];
+    var add = function (hh, mm, prio) { cands.push({ hour: h12(hh), minute: mm, prio: prio }); };
+
+    if (m === 0) { add(h - 1, 30, 1); add(h, 30, 2); add(h + 1, 0, 2); add(h - 1, 0, 3); }
+    else if (m === 30) { add(h - 1, 30, 1); add(h, 0, 2); add(h + 1, 30, 2); add(h + 1, 0, 3); }
+    else {
+      // nach/vor swapped with the same spoken hour word.
+      if (m < 25) add(h - 1, 60 - m, 1);
+      else if (m > 35) add(h + 1, 60 - m, 1);
+      else add(h, 60 - m, 1); // fünf vor halb <-> fünf nach halb
+      // wrong hour (the classic "halb"-style off-by-one)
+      add(h - 1, m, 1); add(h + 1, m, 2);
+      // close minute
+      if (session.stufe >= 4) { add(h, (m + 5) % 60, 3); add(h, (m + 55) % 60, 3); }
+    }
+
+    var seen = {};
+    seen[Z.normalize(session.phrases.text)] = true;
+    var out = [];
+    shuffle(cands).sort(function (a, b) { return a.prio - b.prio; }).forEach(function (c) {
+      if (sameTime(c, item)) return;
+      var text = Z.timeToPhrase(c.hour, c.minute, phraseOpts());
+      var key = Z.normalize(text);
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({ hour: c.hour, minute: c.minute, text: text });
+    });
+    return out.slice(0, 2);
+  }
+
+  function renderChoices() {
+    var item = session.item;
+    var options = shuffle([{ hour: item.hour, minute: item.minute, text: session.phrases.text, right: true }].concat(distractors(item)));
+    var box = $('choices');
+    box.innerHTML = '';
+    options.forEach(function (opt) {
+      var row = document.createElement('div');
+      row.className = 'choice';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-btn';
+      btn.textContent = opt.text;
+      btn.addEventListener('click', function () {
+        if (session.done || btn.disabled) return;
+        if (opt.right) { btn.classList.add('right'); onCorrect(); }
+        else {
+          btn.classList.add('wrong', 'shake');
+          btn.disabled = true;
+          onWrong({ hour: opt.hour, minute: opt.minute });
+        }
+      });
+      var sp = document.createElement('button');
+      sp.type = 'button';
+      sp.className = 'speak-btn';
+      sp.setAttribute('aria-label', 'Vorlesen: ' + opt.text);
+      sp.innerHTML = SPEAKER;
+      sp.addEventListener('click', function () { speak(opt.text); });
+      row.appendChild(btn);
+      row.appendChild(sp);
+      box.appendChild(row);
+      opt.btn = btn;
+    });
+    session.options = options;
+    box.hidden = false;
+  }
+
+  // ---------- Mittel: word tiles ----------
+
+  function tileDistractors(item, words) {
+    var h = h12(item.hour);
+    var lower = words.map(function (w) { return w.toLowerCase(); });
+    var extra = [];
+    var hourWord = words[words.length - 1] === 'Uhr' ? words[words.length - 2] : words[words.length - 1];
+    var hourNum = Z.HOUR_WORDS.lastIndexOf(hourWord === 'ein' ? 'eins' : hourWord);
+    if (hourNum > 0) {
+      var other = Z.HOUR_WORDS[h12(hourNum - 1)];
+      if (words[words.length - 1] === 'Uhr') other = (h12(hourNum - 1) === 1 ? 'ein' : other);
+      extra.push(other);
+    }
+    var nachWord = store.settings.region === 'ch' ? 'ab' : 'nach';
+    if (lower.indexOf('nach') !== -1 || lower.indexOf('ab') !== -1) extra.push('vor');
+    else if (lower.indexOf('vor') !== -1) extra.push(nachWord);
+    if (lower.indexOf('halb') === -1) extra.push('halb');
+    else if (lower.indexOf('uhr') === -1) extra.push('Uhr');
+    if (item.minute === 0 && extra.indexOf('nach') === -1) extra.push(nachWord);
+    return extra.filter(function (w) { return lower.indexOf(w.toLowerCase()) === -1; }).slice(0, 3);
+  }
+
+  function renderTiles() {
+    var words = session.phrases.text.split(' ');
+    var all = shuffle(words.concat(tileDistractors(session.item, words)));
+    session.built = [];
+    var tiles = $('tiles');
+    tiles.innerHTML = '';
+    all.forEach(function (word, i) {
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'tile';
+      t.textContent = word;
+      t.dataset.idx = String(i);
+      t.addEventListener('click', function () {
+        if (session.done || t.classList.contains('used')) return;
+        t.classList.add('used');
+        session.built.push({ word: word, src: t });
+        speak(word);
+        renderBuild();
+      });
+      tiles.appendChild(t);
+    });
+    renderBuild();
+    $('tiles-wrap').hidden = false;
+  }
+
+  function buildText() {
+    return (session.built || []).map(function (b) { return b.word; }).join(' ');
+  }
+
+  function renderBuild() {
+    var box = $('build');
+    box.innerHTML = '';
+    box.classList.remove('wrong', 'right');
+    if (!session.built.length) {
+      box.innerHTML = '<span class="build-empty">Tippe die Wörter an</span>';
+    }
+    session.built.forEach(function (b, i) {
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'tile';
+      t.textContent = b.word;
+      t.setAttribute('aria-label', b.word + ' zurücklegen');
+      t.addEventListener('click', function () {
+        if (session.done) return;
+        b.src.classList.remove('used');
+        session.built.splice(i, 1);
+        renderBuild();
+      });
+      box.appendChild(t);
+    });
+    $('build-check').disabled = !session.built.length || session.done;
+  }
+
+  $('build-clear').addEventListener('click', function () {
+    if (!session || session.done) return;
+    session.built.forEach(function (b) { b.src.classList.remove('used'); });
+    session.built = [];
+    renderBuild();
+  });
+  $('build-speak').addEventListener('click', function () {
+    if (session) speak(buildText() || 'Wie spät ist es?');
+  });
+  $('build-check').addEventListener('click', function () {
+    if (!session || session.done) return;
+    var text = buildText();
+    var item = session.item;
+    if (Z.isCorrect(text, item.hour, item.minute, phraseOpts())) {
+      $('build').classList.add('right');
+      onCorrect();
+    } else {
+      var box = $('build');
+      box.classList.remove('shake');
+      void box.offsetWidth;
+      box.classList.add('wrong', 'shake');
+      onWrong(Z.phraseToTime(text, phraseOpts()));
+    }
+  });
+
+  // ---------- Schwer: set the hands ----------
+
+  function clearWrongMarks() {
+    clock.setHighlight(null);
+  }
+
+  $('set-check').addEventListener('click', function () {
+    if (!session || session.done) return;
+    var t = clock.get();
+    if (sameTime(t, session.item)) onCorrect();
+    else onWrong(t);
+  });
+
+  // ---------- evaluation ----------
+
+  /** Which hand was misread, and what kind of mistake was it? */
+  function diagnose(given, item) {
+    if (!given) return { hour: true, minute: true, type: 'other' };
+    var hourWrong = h12(given.hour) !== h12(item.hour);
+    var minuteWrong = given.minute !== item.minute;
+    var type = 'other';
+    if (minuteWrong && item.minute !== 0 && item.minute !== 30 && given.minute === 60 - item.minute) type = 'direction';
+    else if (hourWrong && !minuteWrong) type = 'hour';
+    else if (minuteWrong && !hourWrong) type = 'minute';
+    return { hour: hourWrong, minute: minuteWrong || type === 'direction', type: type };
+  }
+
+  function recordFirstAttempt(correct, diag) {
+    if (session.item.reask) return; // re-asks are practice, not stats
+    var cat = Z.categoryOf(session.item.minute);
+    var s = store.stats[cat] || (store.stats[cat] = { asked: 0, wrong: 0 });
+    s.asked += 1;
+    if (!correct) {
+      s.wrong += 1;
+      store.errorTypes[diag.type] = (store.errorTypes[diag.type] || 0) + 1;
+    }
+    save();
+  }
+
+  function setFeedback(kind, html) {
+    var fb = $('feedback');
+    fb.hidden = false;
+    fb.className = 'feedback ' + kind;
+    $('feedback-msg').innerHTML = html;
+  }
+
+  function esc(text) {
+    var d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  var PRAISE = ['Super!', 'Richtig!', 'Toll gemacht!', 'Genau!', 'Klasse!', 'Prima!'];
+
+  function onCorrect() {
+    var item = session.item;
+    if (session.attempt === 0) recordFirstAttempt(true);
+    session.done = true;
+    var slot = item.slot;
+    var kind = item.reask ? 'later' : session.attempt === 0 ? 'first' : 'second';
+    if (!session.results[slot]) session.results[slot] = kind;
+    else if (session.results[slot] === 'missed') session.results[slot] = 'later';
+    renderProgress(slot);
+    clock.setInteractive(false);
+    clock.setHighlight(null);
+    sound('happy');
+    var praise = pick(PRAISE);
+    setFeedback('good', esc(praise) + '<span class="say">' + esc(session.phrases.text) + '</span>');
+    lockAnswers();
+    $('next-question').hidden = false;
+    $('next-question').focus({ preventScroll: true });
+    var said = praise + ' ' + session.phrases.text;
+    var asked = session.item;
+    setTimeout(function () { if (session && session.item === asked) speak(said); }, 350);
+  }
+
+  function onWrong(given) {
+    var item = session.item;
+    var diag = diagnose(given, item);
+    if (session.attempt === 0) recordFirstAttempt(false, diag);
+    session.attempt += 1;
+    sound('oops');
+
+    if (session.attempt === 1) {
+      // First miss: one more help level, highlight the misread hand, try again.
+      var level = helpUp(session.help);
+      clock.setHelp(level);
+      clock.setHighlight({ hour: diag.hour, minute: diag.minute });
+      if (level !== session.help) {
+        var note = $('help-note');
+        note.hidden = false;
+        note.textContent = level === 'viel' ? 'Jetzt mit mehr Hilfe an der Uhr' : 'Jetzt mit Zahlen an der Uhr';
+      }
+      var hint;
+      if (diag.hour && diag.minute) hint = 'Schau dir beide Zeiger genau an.';
+      else if (diag.hour) hint = 'Schau auf den kleinen roten Zeiger.';
+      else hint = 'Schau auf den großen blauen Zeiger.';
+      if (diag.type === 'direction') hint = 'Ist es „nach“ oder „vor“? Schau auf den großen blauen Zeiger.';
+      if (session.mode === 'schwer') hint = hint.replace('Schau auf', 'Prüfe').replace('Schau dir', 'Prüfe').replace(' genau an', '');
+      setFeedback('oops', 'Fast! ' + esc(hint));
+      speak('Fast! ' + hint);
+      return;
+    }
+
+    // Second miss: show and say the answer, no penalty, ask again later.
+    session.done = true;
+    if (!session.results[item.slot]) session.results[item.slot] = 'missed';
+    if (!item.reask) {
+      var at = Math.min(session.queue.length, session.pos + 3);
+      session.queue.splice(at, 0, { hour: item.hour, minute: item.minute, slot: item.slot, reask: true });
+    }
+    clock.setInteractive(false);
+    clock.setHighlight(null);
+    lockAnswers(true);
+    var say = session.phrases.text;
+    setFeedback('oops', 'So heißt es:<span class="say">' + esc(say) + '</span>' +
+      (item.reask ? '' : '<small>Die Uhrzeit kommt gleich noch einmal.</small>'));
+    if (session.mode === 'schwer') clock.animateTo(item.hour, item.minute);
+    speak('So heißt es: ' + say);
+    renderProgress();
+    $('next-question').hidden = false;
+  }
+
+  function lockAnswers(revealRight) {
+    if (session.mode === 'leicht' && session.options) {
+      session.options.forEach(function (o) {
+        o.btn.disabled = true;
+        if (revealRight && o.right) o.btn.classList.add('right');
+      });
+    }
+    if (session.mode === 'mittel') {
+      $('build-check').disabled = true;
+      if (revealRight) $('build').classList.remove('wrong');
+    }
+    if (session.mode === 'schwer') $('set-check').disabled = true;
+  }
+
+  $('next-question').addEventListener('click', function () {
+    if (synth) synth.cancel();
+    nextQuestion();
+  });
+  $('prompt-speak').innerHTML = SPEAKER;
+  $('prompt-speak').addEventListener('click', promptSpeech);
+
+  $('quit-session').addEventListener('click', function () {
+    if (synth) synth.cancel();
+    session = null;
+    refreshStart();
+    show('screen-start');
+  });
+
+  // ------------------------------------------------------------------
+  // End of session, progression
+  // ------------------------------------------------------------------
+
+  function finishSession() {
+    var r = session.results;
+    var first = r.filter(function (x) { return x === 'first'; }).length;
+    var stars = r.filter(function (x) { return x && x !== 'missed'; }).length;
+    store.history.push({
+      date: new Date().toISOString(),
+      stufe: session.stufe, mode: session.mode, help: session.help,
+      firstTry: first, stars: stars, total: QUESTIONS,
+      minutes: Math.max(1, Math.round((Date.now() - session.startedAt) / 60000))
+    });
+    if (store.history.length > 200) store.history = store.history.slice(-200);
+    save();
+
+    $('reward-stars').innerHTML = r.map(function (x, i) {
+      return starSvg(x).replace('<svg ', '<svg style="animation-delay:' + (i * 0.12) + 's" ');
+    }).join('');
+    var title = stars >= 9 ? 'Super gemacht!' : stars >= 6 ? 'Toll gemacht!' : 'Gut geübt!';
+    $('reward-title').textContent = title;
+    $('reward-text').textContent = stars + ' von ' + QUESTIONS + ' Sternen gesammelt.';
+    sound('fanfare');
+    speak(title + ' Du hast ' + stars + ' Sterne gesammelt.');
+
+    var next = suggestion();
+    var card = $('suggest-card');
+    if (next) {
+      card.hidden = false;
+      $('suggest-text').textContent = 'Zweimal hintereinander ' + PROMOTE_SCORE + ' von 10 beim ersten Versuch! Weiter zu Stufe ' + next + ' (' + STUFE_NAMES[next] + ')?';
+    } else card.hidden = true;
+
+    session = null;
+    show('screen-reward');
+  }
+
+  /** Next Stufe to suggest, or 0. */
+  function suggestion() {
+    var h = store.history;
+    if (h.length < 2 || store.suggestDismissedAt >= h.length - 1) return 0;
+    var a = h[h.length - 1], b = h[h.length - 2];
+    var cur = store.settings.stufe;
+    if (a.stufe !== cur || b.stufe !== cur || cur >= 5) return 0;
+    if (a.firstTry >= PROMOTE_SCORE && b.firstTry >= PROMOTE_SCORE) return cur + 1;
+    return 0;
+  }
+
+  // Hold-to-confirm button used as a simple parent gate.
+  function holdButton(btn, onDone, ms) {
+    ms = ms || 1600;
+    var timer = null;
+    function start(evt) {
+      evt.preventDefault();
+      btn.classList.add('holding');
+      timer = setTimeout(function () {
+        btn.classList.remove('holding');
+        timer = null;
+        onDone();
+      }, ms);
+    }
+    function stop() {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      btn.classList.remove('holding');
+    }
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointerleave', stop);
+    btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    btn.addEventListener('keydown', function (e) { if ((e.key === ' ' || e.key === 'Enter') && !timer && !e.repeat) start(e); });
+    btn.addEventListener('keyup', function (e) { if (e.key === ' ' || e.key === 'Enter') stop(); });
+  }
+
+  function acceptSuggestion() {
+    var next = suggestion();
+    if (!next) return 0;
+    store.settings.stufe = next;
+    store.suggestDismissedAt = store.history.length - 1;
+    save();
+    sound('happy');
+    return next;
+  }
+  function dismissSuggestion() {
+    store.suggestDismissedAt = store.history.length - 1;
+    save();
+  }
+
+  holdButton($('suggest-yes'), function () {
+    var next = acceptSuggestion();
+    $('suggest-card').hidden = true;
+    if (next) $('reward-text').textContent = 'Ab jetzt: Stufe ' + next + ' – ' + STUFE_NAMES[next] + '.';
+  });
+  $('suggest-no').addEventListener('click', function () {
+    dismissSuggestion();
+    $('suggest-card').hidden = true;
+  });
+  holdButton($('banner-yes'), function () { acceptSuggestion(); refreshStart(); });
+  $('banner-no').addEventListener('click', function () { dismissSuggestion(); refreshStart(); });
+
+  $('again').addEventListener('click', startSession);
+  $('to-start').addEventListener('click', function () { refreshStart(); show('screen-start'); });
+  $('start-session').addEventListener('click', function () {
+    sound('tap'); // unlocks audio on iOS from a user gesture
+    startSession();
+  });
+
+  // ------------------------------------------------------------------
+  // Parent view
+  // ------------------------------------------------------------------
+
+  var MODE_NAMES = { leicht: 'Leicht', mittel: 'Mittel', schwer: 'Schwer' };
+  var HELP_NAMES = { viel: 'viel', wenig: 'wenig', keine: 'keine' };
+  var ERROR_NAMES = { hour: 'Stunde falsch', minute: 'Minuten falsch', direction: '„nach“ und „vor“ vertauscht', other: 'Sonstiges' };
+
+  function renderParent() {
+    var rows = Object.keys(Z.CATEGORY_LABELS).map(function (cat) {
+      var s = store.stats[cat] || { asked: 0, wrong: 0 };
+      return { cat: cat, asked: s.asked, wrong: s.wrong, rate: s.asked ? s.wrong / s.asked : 0 };
+    }).filter(function (r) { return r.asked > 0; })
+      .sort(function (a, b) { return b.rate - a.rate || b.wrong - a.wrong; });
+
+    var table = $('stats-table');
+    if (!rows.length) {
+      table.innerHTML = '<p class="panel-note">Noch keine Daten. Nach der ersten Runde steht hier, welche Uhrzeiten schwerfallen.</p>';
+    } else {
+      table.innerHTML = rows.map(function (r) {
+        var pct = Math.round(r.rate * 100);
+        return '<div class="stat-row"><span class="stat-name">' + esc(Z.CATEGORY_LABELS[r.cat]) + '</span>' +
+          '<span class="stat-nums">' + r.wrong + ' / ' + r.asked + ' falsch</span>' +
+          '<span class="stat-bar" aria-hidden="true"><span style="width:' + pct + '%"></span></span></div>';
+      }).join('');
+    }
+
+    var et = store.errorTypes;
+    var types = Object.keys(ERROR_NAMES).filter(function (k) { return et[k]; });
+    $('error-types').innerHTML = types.length
+      ? '<p class="panel-note">Art der Fehler:</p><div class="chips">' + types.map(function (k) {
+        return '<span class="chip">' + esc(ERROR_NAMES[k]) + ': ' + et[k] + '</span>';
+      }).join('') + '</div>'
+      : '';
+
+    var hist = store.history.slice(-10).reverse();
+    $('history').innerHTML = hist.length
+      ? '<div class="hist-wrap"><table class="hist"><thead><tr><th>Datum</th><th>Stufe</th><th>Antwort</th><th>Hilfe</th><th>1. Versuch</th><th>Sterne</th></tr></thead><tbody>' +
+        hist.map(function (h) {
+          var d = new Date(h.date);
+          return '<tr><td>' + d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</td><td>' + h.stufe +
+            '</td><td>' + MODE_NAMES[h.mode] + '</td><td>' + HELP_NAMES[h.help] + '</td><td>' + h.firstTry + ' / ' + h.total +
+            '</td><td>' + h.stars + '</td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '<p class="panel-note">Noch keine Runden gespielt.</p>';
+
+    $('set-region').value = store.settings.region;
+    $('set-speech').checked = !!store.settings.speech;
+    $('set-sound').checked = !!store.settings.sound;
+    $('set-rate').value = String(store.settings.rate);
+    updateVoiceNote();
+  }
+
+  $('open-parent').addEventListener('click', function () {
+    $('parent-gate').hidden = false;
+    $('parent-body').hidden = true;
+    show('screen-parent');
+  });
+  $('parent-close').addEventListener('click', function () { refreshStart(); show('screen-start'); });
+  holdButton($('parent-unlock'), function () {
+    $('parent-gate').hidden = true;
+    $('parent-body').hidden = false;
+    renderParent();
+  });
+
+  $('set-region').addEventListener('change', function (e) { store.settings.region = e.target.value; save(); });
+  $('set-speech').addEventListener('change', function (e) { store.settings.speech = e.target.checked; save(); });
+  $('set-sound').addEventListener('change', function (e) { store.settings.sound = e.target.checked; save(); });
+  $('set-rate').addEventListener('change', function (e) {
+    store.settings.rate = Number(e.target.value);
+    save();
+    speak('Viertel nach drei');
+  });
+  holdButton($('reset-progress'), function () {
+    var keep = store.settings;
+    store = defaults();
+    store.settings = keep;
+    save();
+    renderParent();
+  });
+
+  // ------------------------------------------------------------------
+  // Boot
+  // ------------------------------------------------------------------
+
+  refreshStart();
+  show('screen-start');
+
+  // Offline cache when served over http(s). Not available everywhere; ignore failures.
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) { /* ignore */ }
+  }
+})();
+</script>
+</body>
+</html>
